@@ -1,7 +1,8 @@
+import * as flow from './flow';
 import * as flux from './flux';
 import * as rs from './reactivestreams-spec';
 
-export class FluxRange extends flux.Flux<number> {
+export class FluxRange extends flux.Flux<number> implements flow.Fuseable {
     private mStart: number;
     private mEnd: number;
     
@@ -14,9 +15,11 @@ export class FluxRange extends flux.Flux<number> {
     subscribe(s: rs.Subscriber<number>) : void {
         s.onSubscribe(new FluxRangeSubscription(this.mStart, this.mEnd, s));
     }
+    
+    isFuseable() { }
 }
 
-class FluxRangeSubscription implements rs.Subscription {
+class FluxRangeSubscription implements flow.QueueSubscription<number> {
     private mActual : rs.Subscriber<number>;
     private mEnd : number;
     private requested : number;
@@ -82,5 +85,37 @@ class FluxRangeSubscription implements rs.Subscription {
     
     cancel() : void {
         this.cancelled = true;
+    }
+    
+    requestFusion(mode: number) : number {
+        if ((mode & flow.FC.SYNC) != 0) {
+            return flow.FC.SYNC;
+        }
+        return flow.FC.NONE;
+    }
+    
+    offer(t: number) : boolean {
+        throw flow.FC.unsupported();
+    }
+    
+    poll() : number {
+        const index = this.mIndex;
+        if (index == this.mEnd) {
+            return null;
+        }
+        this.mIndex = index + 1;
+        return index;
+    }
+    
+    isEmpty() : boolean {
+        return this.mIndex == this.mEnd;
+    }
+    
+    size() : number {
+        return this.mEnd - this.mIndex;
+    }
+    
+    clear() {
+        this.mIndex = this.mEnd;
     }
 }
