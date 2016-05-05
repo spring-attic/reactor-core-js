@@ -1,0 +1,9 @@
+**/.DS_Store
+.settings
+**/.vs
+!./.vscode/tasks.json
+!**/.vscode/tasks.json
+**/.vscode
+js
+*.js
+*.js.map
