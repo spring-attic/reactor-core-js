@@ -1,6 +1,6 @@
 import * as rs from './reactivestreams-spec';
-import * as ds from './reactor-core-flow';
-import * as pxs from './reactor-core-subscription';
+import * as ds from './flow';
+import * as pxs from './subscription';
 
 export class CallbackSubscriber<T> implements rs.Subscriber<T>, ds.Cancellation {
     private mOnNext : (t: T) => void;

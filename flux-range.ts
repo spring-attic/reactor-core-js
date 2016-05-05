@@ -1,4 +1,4 @@
-import * as flux from './reactor-core-publisher';
+import * as flux from './flux';
 import * as rs from './reactivestreams-spec';
 
 export class FluxRange extends flux.Flux<number> {
@@ -12,7 +12,7 @@ export class FluxRange extends flux.Flux<number> {
     }
     
     subscribe(s: rs.Subscriber<number>) : void {
-        s.onSubscribe(new PxRangeSubscription(this.mStart, this.mEnd, s));
+        s.onSubscribe(new FluxRangeSubscription(this.mStart, this.mEnd, s));
     }
 }
 

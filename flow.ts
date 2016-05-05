@@ -1,0 +1,47 @@
+import * as rs from './reactivestreams-spec';
+
+export interface Cancellation {
+    dispose() : void;
+}
+
+export class FC {
+    public static get NONE() : number { return 0; }
+    public static get SYNC() : number { return 1; }
+    public static get ASYNC() : number { return 2; }
+    public static get ANY() : number { return 3; }
+    public static get BOUNDARY() : number { return 7; }
+    
+    public static unsupported() : Error {
+        return new Error("Unsupported in Fusion mode");
+    }
+}
+
+export interface Fuseable {
+    // TypeScript has no instanceof, existence of this method is considered to be Fuseable
+    isFuseable() : void;
+}
+
+export interface Queue<T> {
+    offer(t: T) : boolean;
+    poll() : T;
+    isEmpty() : boolean;
+    clear() : void;
+    size() : number;
+}
+
+export interface QueueSubscription<T> extends rs.Subscription, Queue<T> {
+    requestFusion(mode: number) : number;
+}
+
+export interface ConditionalSubscriber<T> extends rs.Subscriber<T> {
+    tryOnNext(t: T) : boolean;
+}
+
+export interface Callable<T> {
+    call() : T;
+}
+
+export interface ScalarCallable<T> extends Callable<T> {
+    // TypeScript has no instanceof, existence of this method is considered to be ScalarCallable
+    isScalar() : void;
+}
