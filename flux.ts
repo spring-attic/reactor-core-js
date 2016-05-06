@@ -1,8 +1,10 @@
+///<reference path="flux-range.ts"/>
+
 import * as rs from "./reactivestreams-spec";
 import * as flow from "./flow";
-import * as range from "./flux-range";
-import * as solo from "./flux-solo";
-import * as map from "./flux-map";
+//import * as range from "./flux-range";
+//import * as solo from "./flux-solo";
+//import * as map from "./flux-map";
 import * as subscriber from "./subscriber";
 
 export abstract class Flux<T> implements rs.Publisher<T> {
