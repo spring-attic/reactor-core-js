@@ -5,6 +5,7 @@ import * as map from "./flux-map";
 import * as filter from "./flux-filter";
 import * as subscriber from "./subscriber";
 import * as sp from './subscription';
+import * as util from './util';
 
 export abstract class Flux<T> implements rs.Publisher<T> {
     
@@ -66,6 +67,272 @@ export abstract class Flux<T> implements rs.Publisher<T> {
         return cs;
     }
 
+}
+
+// ----------------------------------------------------------------------
+
+/** Dispatches signals to multiple Subscribers or signals an error if they can't keep up individually. */
+export class DirectProcessor<T> extends Flux<T> implements rs.Processor<T, T> {
+    private mDone: boolean;
+    private mError: Error;
+    private subscribers: Array<DirectSubscription<T>>;
+    
+    constructor() {
+        super();
+        this.mDone = false;
+        this.mError = null;
+        this.subscribers = new Array<DirectSubscription<T>>();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        if (this.mDone) {
+            s.onSubscribe(sp.EmptySubscription.INSTANCE);
+            const ex = this.mError;
+            if (ex !== undefined) {
+                s.onError(ex);
+            } else {
+                s.onComplete();
+            }
+        } else {
+            const ds = new DirectSubscription<T>(s, this);
+            this.subscribers.push(ds);
+            s.onSubscribe(ds);
+        }
+    }
+    
+    remove(ds: DirectSubscription<T>) {
+        const a = this.subscribers;
+        const idx = a.indexOf(ds);
+        if (idx >= 0) {
+            a.splice(idx, 1);
+        }
+    }
+    
+    onSubscribe(s: rs.Subscription) {
+        if (this.mDone) {
+            s.cancel();
+        } else {
+            s.request(Infinity);
+        }
+    }
+    
+    onNext(t: T) {
+        if (t === null) {
+            throw new Error("t is null");
+        }
+        const a = this.subscribers;
+        for (var s of a) {
+            s.mActual.onNext(t);
+        }
+    }
+    
+    onError(t: Error) {
+        if (t === null) {
+            throw new Error("t is null");
+        }
+        this.mError = t;
+        this.mDone = true;
+        const a = this.subscribers;
+        for (var s of a) {
+            s.mActual.onError(t);
+        }
+        a.length = 0;
+    }
+    
+    onComplete() {
+        this.mDone = true;
+        const a = this.subscribers;
+        for (var s of a) {
+            s.mActual.onComplete();
+        }
+        a.length = 0;
+    }
+}
+
+class DirectSubscription<T> implements rs.Subscription {
+    
+    private mParent: DirectProcessor<T>;
+    
+    mActual: rs.Subscriber<T>;
+    
+    mRequested: number;
+    
+    constructor(actual: rs.Subscriber<T>, parent: DirectProcessor<T>) {
+        this.mParent = parent;
+        this.mActual = actual;
+        this.mRequested = 0;
+    }
+    
+    request(n: number) {
+        if (sp.SH.validRequest(n)) {
+            this.mRequested += n;
+        }
+    }
+    
+    cancel() {
+        this.mParent.remove(this);
+    }
+}
+
+export class UnicastProcessor<T> extends Flux<T> implements rs.Processor<T, T>, rs.Subscription {
+    
+    private once: boolean;
+    
+    private mActual: rs.Subscriber<T>;
+    
+    private mRequested : number;
+    
+    private queue: util.SpscLinkedArrayQueue<T>;
+    
+    private wip: number;
+    
+    private cancelled: boolean;
+    private done: boolean;
+    private error: Error;
+    
+    constructor(capacity? : number) {
+        super();
+        this.once = false;
+        this.mRequested = 0;
+        this.mActual = null;
+        this.error = null;
+        this.queue = new util.SpscLinkedArrayQueue<T>(capacity === undefined ? 128 : capacity);
+    }
+    
+    subscribe(s: rs.Subscriber<T>) {
+        if (!this.once) {
+            this.once = true;
+            this.mActual = s;
+            s.onSubscribe(this);
+        } else {
+            sp.EmptySubscription.error(s, new Error("Only one Subscriber allowed"));
+        }
+    }
+    
+    onSubscribe(s: rs.Subscription) {
+        if (this.done) {
+            s.cancel();
+        } else {
+            s.request(Infinity);
+        }
+    }
+    
+    onNext(t: T) {
+        if (t === null) {
+            throw new Error("t is null");
+        }
+        this.queue.offer(t);
+        this.drain();
+    }
+    
+    onError(t: Error) {
+        if (t === null) {
+            throw new Error("t is null");
+        }
+        this.error = t;
+        this.done = true;
+        this.drain();
+    }
+    
+    onComplete() {
+        this.done = true;
+        this.drain();
+    }
+    
+    request(n: number) {
+        if (sp.SH.validRequest(n)) {
+            this.mRequested += n;
+            this.drain();
+        }
+    }
+    
+    cancel() {
+        this.cancelled = true;
+        if (this.wip++ == 0) {
+            this.mActual = null;
+            this.queue.clear();
+        }
+        
+    }
+    
+    drain() {
+        if (this.mActual == null) {
+            return;
+        }
+        if (this.wip++ != 0) {
+            return;
+        }
+        
+        var missed = 1;
+        
+        for (;;) {
+            
+            const r = this.mRequested;
+            var e = 0;
+            
+            while (e != r) {
+                if (this.cancelled) {
+                    this.mActual = null;
+                    this.queue.clear();
+                    return;
+                }
+                
+                const d = this.done;
+                const v = this.queue.poll();
+                const empty = v == null;
+                
+                if (d && empty) {
+                    const ex = this.error;
+                    if (ex != null) {
+                        this.mActual.onError(ex);
+                    } else {
+                        this.mActual.onComplete();
+                    }
+                    this.mActual = null;
+                    return;
+                }
+                
+                if (empty) {
+                    break;
+                }
+                
+                this.mActual.onNext(v);
+                
+                e++;
+            }
+            
+            if (e == r) {
+                if (this.cancelled) {
+                    this.mActual = null;
+                    this.queue.clear();
+                    return;
+                }
+                const d = this.done;
+                const empty = this.queue.isEmpty();
+                
+                if (d && empty) {
+                    const ex = this.error;
+                    if (ex != null) {
+                        this.mActual.onError(ex);
+                    } else {
+                        this.mActual.onComplete();
+                    }
+                    this.mActual = null;
+                    return;
+                }
+            }
+            
+            if (e != 0) {
+                this.mRequested -= e;
+            }
+            
+            const m = this.wip - missed;
+            this.wip = m;
+            if (m == 0) {
+                break;
+            }
+        }
+    }
 }
 
 // ----------------------------------------------------------------------
