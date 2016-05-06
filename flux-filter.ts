@@ -1,16 +1,17 @@
 import * as rs from './reactivestreams-spec';
 import * as sp from './subscription';
+import * as flow from './flow';
 
-export class FluxMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscription {
-    private mActual : rs.Subscriber<R>;
-    private mMapper : (t: T) => R;
+export class FluxFilterSubscriber<T> implements flow.ConditionalSubscriber<T>, rs.Subscription {
+    private mActual : rs.Subscriber<T>;
+    private mPredicate : (t: T) => boolean;
 
     private s : rs.Subscription;
     private done : boolean;
     
-    constructor(actual : rs.Subscriber<R>, mapper : (t: T) => R) {
+    constructor(actual : rs.Subscriber<T>, predicate: (t: T) => boolean) {
         this.mActual = actual;
-        this.mMapper = mapper;
+        this.mPredicate = predicate;
     }
     
     onSubscribe(s: rs.Subscription) {
@@ -22,20 +23,30 @@ export class FluxMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
     }
     
     onNext(t: T) {
+        if (!this.tryOnNext(t)) {
+            this.s.request(1);
+        }
+    }
+    
+    tryOnNext(t: T) : boolean {
         if (this.done) {
-            return;
+            return true;
         }
         
         var v;
         try {
-            v = this.mMapper(t);
+            v = this.mPredicate(t);
         } catch (ex) {
             this.s.cancel();
             this.onError(ex);
-            return;
+            return true;
         }
         
-        this.mActual.onNext(v);
+        if (v) {
+            this.mActual.onNext(t);
+            return true;
+        }
+        return false;
     }
     
     onError(t: Error) {
