@@ -196,6 +196,9 @@ export class UnicastProcessor<T> extends Flux<T> implements rs.Processor<T, T>, 
         this.mRequested = 0;
         this.mActual = null;
         this.error = null;
+        this.done = false;
+        this.wip = 0;
+        this.cancelled = false;
         this.queue = new util.SpscLinkedArrayQueue<T>(capacity === undefined ? 128 : capacity);
     }
     

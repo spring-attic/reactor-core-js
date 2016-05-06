@@ -45,3 +45,19 @@ export interface ScalarCallable<T> extends Callable<T> {
     // TypeScript has no instanceof, existence of this method is considered to be ScalarCallable
     isScalar() : void;
 }
+
+export class CallbackCancellation implements Cancellation {
+    private mCallback: () => void;
+    
+    constructor(callback: () => void) {
+        this.mCallback = callback;
+    }
+    
+    dispose() : void {
+        const c = this.mCallback;
+        if (c != null) {
+            this.mCallback = null;
+            c();
+        }
+    }
+}
