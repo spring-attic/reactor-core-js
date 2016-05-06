@@ -61,3 +61,8 @@ export class CallbackCancellation implements Cancellation {
         }
     }
 }
+
+export class Cancellations {
+    private static REJECTED_INSTANCE = new CallbackCancellation(() => { });
+    static get REJECTED() : Cancellation { return Cancellations.REJECTED_INSTANCE; }
+}
