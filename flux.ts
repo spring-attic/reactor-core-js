@@ -2,6 +2,7 @@ import * as rs from "./reactivestreams-spec";
 import * as flow from "./flow";
 import * as range from "./flux-range";
 import * as map from "./flux-map";
+import * as take from "./flux-take";
 import * as filter from "./flux-filter";
 import * as subscriber from "./subscriber";
 import * as sp from './subscription';
@@ -30,30 +31,42 @@ export abstract class Flux<T> implements rs.Publisher<T> {
         return new FluxJust<T>(t);
     }
     
-    static fromCallable<T>(callable: () => T) {
+    static fromCallable<T>(callable: () => T) : Flux<T> {
         return new FluxFromCallable<T>(callable);
     }
     
-    static defer<T>(supplier: () => rs.Publisher<T>) {
+    static defer<T>(supplier: () => rs.Publisher<T>) : Flux<T> {
         return new FluxDefer<T>(supplier);
+    }
+    
+    static fromArray<T>(array: Array<T>) : Flux<T> {
+        return new FluxArray<T>(array);
     }
     
     // ------------------------------------
     
-    map<R>(mapper: (t: T) => R) {
+    map<R>(mapper: (t: T) => R) : Flux<R> {
         return new FluxMap<T, R>(this, mapper);
     }
     
-    as<R>(converter: (p: Flux<T>) => R) {
+    as<R>(converter: (p: Flux<T>) => R) : R {
         return converter(this);
     }
     
-    compose<R>(composer: (p: Flux<T>) => rs.Publisher<R>) {
+    compose<R>(composer: (p: Flux<T>) => rs.Publisher<R>) : Flux<R> {
         return Flux.defer(() => composer(this));
     }
 
-    filter<R>(predicate: (t: T) => boolean) {
+    filter<R>(predicate: (t: T) => boolean) : Flux<T> {
         return new FluxFilter<T>(this, predicate);
+    }
+    
+    lift<R>(lifter: (s: rs.Subscriber<R>) => rs.Subscriber<T>) : Flux<R> {
+        return new FluxLift(this, lifter);
+    }
+    
+    take(n: number) : Flux<T> {
+        return new FluxTake<T>(this, n);
     }
     
     // ------------------------------------
@@ -493,5 +506,52 @@ class FluxFilter<T> extends Flux<T> {
     
     subscribe(s: rs.Subscriber<T>) {
         this.mSource.subscribe(new filter.FluxFilterSubscriber<T>(s, this.mPredicate));
+    }
+}
+
+class FluxLift<T, R> extends Flux<R> {
+    
+    private mLifter: (s: rs.Subscriber<R>) => rs.Subscriber<T>;
+    
+    private mSource: rs.Publisher<T>;
+    
+    constructor(source: rs.Publisher<T>, lifter: (s: rs.Subscriber<R>) => rs.Subscriber<T>) {
+        super();
+        this.mSource = source;
+        this.mLifter = lifter;
+    }
+    
+    subscribe(s: rs.Subscriber<R>) : void {
+        this.mSource.subscribe(this.mLifter(s));
+    }
+}
+
+class FluxArray<T> extends Flux<T> implements flow.Fuseable {
+    private mArray: Array<T>;
+    
+    constructor(array: Array<T>) {
+        super();
+        this.mArray = array;
+    }
+    
+    isFuseable() { }
+    
+    subscribe(s: rs.Subscriber<T>) {
+        s.onSubscribe(new range.FluxArraySubscription<T>(this.mArray, s));
+    }
+}
+
+class FluxTake<T> extends Flux<T> {
+    private mSource : Flux<T>;
+    private mCount : number;
+    
+    constructor(source: Flux<T>, n: number) {
+        super();
+        this.mSource = source;
+        this.mCount = n;
+    }
+    
+    subscribe(s: rs.Subscriber<T>) {
+        this.mSource.subscribe(new take.FluxTakeSubscriber<T>(this.mCount, s));
     }
 }

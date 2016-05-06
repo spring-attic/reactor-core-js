@@ -231,7 +231,7 @@ export class DeferrendScalarSubscription<T> implements flow.QueueSubscription<T>
 }
 
 /** Suppresses the fusion capability of an upstream source. */
-export class SuppressFusionSubscriber<T> implements flow.QueueSubscription<T> {
+export class SuppressFusionSubscriber<T> implements rs.Subscriber<T>, flow.QueueSubscription<T> {
     private mActual : rs.Subscriber<T>;
     
     private s: rs.Subscription;
