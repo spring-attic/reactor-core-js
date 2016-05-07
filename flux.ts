@@ -4,6 +4,7 @@ import * as range from "./flux-range";
 import * as map from "./flux-map";
 import * as take from "./flux-take";
 import * as filter from "./flux-filter";
+import * as flatmap from "./flux-flatmap";
 import * as subscriber from "./subscriber";
 import * as sp from './subscription';
 import * as util from './util';
@@ -68,7 +69,18 @@ export abstract class Flux<T> implements rs.Publisher<T> {
     take(n: number) : Flux<T> {
         return new FluxTake<T>(this, n);
     }
-    
+
+    flatMap<R>(mapper: (t: T) => rs.Publisher<R>, delayError?: boolean, maxConcurrency?: number, prefetch?: number) : Flux<R> {
+        return new FluxFlatMap<T, R>(this, mapper, 
+            delayError === undefined ? false : delayError,
+            maxConcurrency === undefined ? Infinity : maxConcurrency,
+            prefetch === undefined ? 128 : prefetch
+        );
+    }
+
+    hide() : Flux<T> {
+        return new FluxHide<T>(this);
+    }    
     // ------------------------------------
     
     consume(onNext : (t: T) => void, onError? : (t : Error) => void, onComplete? : () => void) : flow.Cancellation {
@@ -553,5 +565,40 @@ class FluxTake<T> extends Flux<T> {
     
     subscribe(s: rs.Subscriber<T>) {
         this.mSource.subscribe(new take.FluxTakeSubscriber<T>(this.mCount, s));
+    }
+}
+
+class FluxFlatMap<T, R> extends Flux<R> {
+    private mSource: Flux<T>;
+    private mMapper: (t: T) => rs.Publisher<R>;
+    private mDelayError: boolean;
+    private mMaxConcurrency: number;
+    private mPrefetch: number;
+    
+    constructor(source: Flux<T>, mapper: (t: T) => rs.Publisher<R>,
+            delayError: boolean, maxConcurrency: number, prefetch: number) {
+        super();
+        this.mSource = source;
+        this.mMapper = mapper;
+        this.mDelayError = delayError;
+        this.mMaxConcurrency = maxConcurrency;
+        this.mPrefetch = prefetch;        
+    }
+    
+    subscribe(s: rs.Subscriber<R>) : void {
+        this.mSource.subscribe(new flatmap.FlatMapSubscriber<T, R>(
+            s, this.mMapper, this.mDelayError,
+            this.mMaxConcurrency, this.mPrefetch
+        ));    
+    }
+}
+
+class FluxHide<T> extends Flux<T> {
+    constructor(private mSource: Flux<T>) { 
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) {
+        this.mSource.subscribe(new map.FluxHideSubscriber<T>(s));
     }
 }
