@@ -14,6 +14,9 @@ export abstract class Flux<T> implements rs.Publisher<T> {
     abstract subscribe(s: rs.Subscriber<T>) : void;
     
     static range(start: number, count: number) : Flux<number> {
+        if (count == 1) {
+            return Flux.just(start);
+        }
         return new FluxRange(start, count);
     }
     
