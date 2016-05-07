@@ -22,6 +22,8 @@ var sink = [ 0 ];
 for (var c of count) {
     var ops = 0;
 
+    const source6 = flux.Flux.just(1);
+    const source0 = flux.Flux.range(1, c);
     const source1 = flux.Flux.range(1, c).flatMap(v => flux.Flux.just(v));
     const source2 = flux.Flux.range(1, c).flatMap(v => flux.Flux.range(v, 2));
     const source3 = flux.Flux.range(1, c).flatMap(v => flux.Flux.range(v, 2).hide());
@@ -39,7 +41,7 @@ for (var c of count) {
         
         for (;;) {
             
-            source4.consume(e => sink[0] = e);
+            source0.consume(e => sink[0] = e);
             //array.push(1);
             //array.splice(1, 1);
             //array[0] = 1;
@@ -53,9 +55,11 @@ for (var c of count) {
         }
     
         const o = (operations * 1000 / (next - now));
-        ops += o;
+        if (i >= 5) {
+            ops += o;
+        }
         //console.log("Count: " + c + "; " + o + " ops/s");
     }
     console.log("");
-    console.log("Count: " + c + "; " + (ops / 10) + " ops/s");
+    console.log("Count: " + c + "; " + (ops / 5) + " ops/s");
 }
