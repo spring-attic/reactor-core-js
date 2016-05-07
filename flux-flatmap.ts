@@ -20,6 +20,9 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
     private scalarLimit : number;
     
     private subscribers: Array<FlatMapInnerSubscriber<T, R>>;
+    private freelist: Array<number>;
+    private producerIndex: number;
+    private consumerIndex: number;
 
     private mIndex: number;
     
@@ -45,6 +48,9 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
             this.scalarLimit = mMaxConcurrency - (mMaxConcurrency >> 2);
         }
         this.subscribers = new Array<FlatMapInnerSubscriber<T, R>>();
+        this.freelist = new Array<number>();
+        this.producerIndex = 0;
+        this.consumerIndex = 0;
     }
     
     onSubscribe(s: rs.Subscription) : void {
@@ -86,10 +92,53 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
             this.scalarNext(c.call());
         } else {
             const inner = new FlatMapInnerSubscriber<T, R>(this, this.mPrefetch);
-            this.subscribers.push(inner);
-            
+            this.addInner(inner);
+             
             p.subscribe(inner);
         }
+    }
+    
+    addInner(inner: FlatMapInnerSubscriber<T, R>) {
+        //this.subscribers.push(inner);
+        const i = this.pollIndex();
+        this.subscribers[i] = inner;
+    }
+    
+    pollIndex() : number {
+        const b = this.freelist;
+        const ci = this.consumerIndex;
+        var m = b.length - 1;
+        
+        if (ci == this.producerIndex) {
+            const n = m < 0 ? 1 : (m + 1) * 2;
+            b.length = n;
+            for (var i = m + 1; i < n; i++) {
+                b[i] = i;
+            }
+            this.consumerIndex = ci + 1;
+            this.producerIndex = n - 1;
+            return m + 1;
+        } else {
+            const o = ci & m;
+            const idx = b[o];
+            this.consumerIndex = ci + 1;
+            return idx;
+        }
+    }
+    
+    removeInner(index: number) {
+        //this.subscribers.splice(index, 1);
+        this.subscribers[index] = null;
+        this.offerIndex(index);
+    }
+    
+    offerIndex(index: number) : void {
+        const b = this.freelist;
+        const pi = this.producerIndex;
+        const m = b.length - 1;
+        const o = pi & m;
+        b[o] = index;
+        this.producerIndex = pi + 1;
     }
     
     scalarProduced() : void {
@@ -318,82 +367,84 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
                     }
                     
                     const inner = b[i];
+                    if (inner != null) {
                     
-                    const q = inner.queue;
-                    if (q == null || q.isEmpty()) {
-                        if (inner.done) {
-                            b.splice(i, 1);
-                            i--;
-                            requestMain++;                  
-                        }               
-                    } else {
-                        while (e != r) {
-                            if (this.cancelled) {
-                                this.cleanup();
-                                return;
-                            }
+                        const q = inner.queue;
+                        if (q == null || q.isEmpty()) {
+                            if (inner.done) {
+                                this.removeInner(i);
+                                //i--;
+                                requestMain++;                  
+                            }               
+                        } else {
+                            while (e != r) {
+                                if (this.cancelled) {
+                                    this.cleanup();
+                                    return;
+                                }
 
-                            if (!this.mDelayError && this.error != null) {
-                                this.s.cancel();
-                                this.cleanup();
-                                a.onError(this.error);
-                                return;
-                            }
-                            
-                            var v;
-                            
-                            try {
-                                v = q.poll();
-                            } catch (ex) {
-                                this.addError(ex);
-
-                                if (!this.mDelayError) {
+                                if (!this.mDelayError && this.error != null) {
                                     this.s.cancel();
                                     this.cleanup();
-                                    ex = this.error;
-                                    this.error = FlatMapSubscriber.TERMINAL_ERROR;
-                                    a.onError(ex);
+                                    a.onError(this.error);
                                     return;
-                                } else {
-                                    inner.cancel();
                                 }
                                 
-                                b.splice(i, 1);
-                                i--;
-                                requestMain++;                  
-                                break;
-                            }
-                            const empty = v == null;
+                                var v;
+                                
+                                try {
+                                    v = q.poll();
+                                } catch (ex) {
+                                    this.addError(ex);
 
-                            if (inner.done && empty) {
-                                b.splice(i, 1);
-                                i--;
-                                requestMain++;                  
-                                break;
-                            }
+                                    if (!this.mDelayError) {
+                                        this.s.cancel();
+                                        this.cleanup();
+                                        ex = this.error;
+                                        this.error = FlatMapSubscriber.TERMINAL_ERROR;
+                                        a.onError(ex);
+                                        return;
+                                    } else {
+                                        inner.cancel();
+                                    }
+                                    
+                                    this.removeInner(i);
+                                    //i--;
+                                    requestMain++;                  
+                                    break;
+                                }
+                                const empty = v == null;
 
-                            if (empty) {
-                                break;
+                                if (inner.done && empty) {
+                                    this.removeInner(i);
+                                    //i--;
+                                    requestMain++;                  
+                                    break;
+                                }
+
+                                if (empty) {
+                                    break;
+                                }
+                                
+                                a.onNext(v);
+                                
+                                e++;
+                                inner.request(1);
                             }
                             
-                            a.onNext(v);
-                            
-                            e++;
-                            inner.request(1);
-                        }
-                        
-                        if (e == r) {
-                            if (this.cancelled) {
-                                this.cleanup();
-                                return;
+                            if (e == r) {
+                                if (this.cancelled) {
+                                    this.cleanup();
+                                    return;
+                                }
+                                
+                                if (inner.done && q.isEmpty()) {
+                                    this.removeInner(i);
+                                    //i--;
+                                    requestMain++;
+                                }
+                                break;    
                             }
-                            
-                            if (inner.done && q.isEmpty()) {
-                                b.splice(i, 1);
-                                i--;
-                                requestMain++;
-                            }
-                            break;    
                         }
                     }
                     
@@ -413,7 +464,7 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
                 this.requested -= e;
             }
             
-            if (!this.done && requestMain != 0) {
+            if (!this.done && requestMain != 0 && this.mMaxConcurrency != Infinity) {
                 this.s.request(requestMain);
                 continue;
             }
@@ -484,7 +535,7 @@ class FlatMapInnerSubscriber<T, R> implements rs.Subscriber<R> {
     private limit : number;
     
     done: boolean;
-    
+ 
     private sourceMode: number;
     
     constructor(private mParent: FlatMapSubscriber<T, R>, private mPrefetch: number) {
@@ -499,6 +550,8 @@ class FlatMapInnerSubscriber<T, R> implements rs.Subscriber<R> {
         if (sp.SH.validSubscription(this.s, s)) {
             this.s = s;
 
+            /* fusion seems to add significant overhead
+            
             const qs = s as flow.QueueSubscription<R>;
             
             if (qs.requestFusion) {
@@ -521,13 +574,18 @@ class FlatMapInnerSubscriber<T, R> implements rs.Subscriber<R> {
                     return;
                 }
             }
+            */
             
             s.request(this.mPrefetch);        
         }
     }
     
     onNext(t: R) : void {
-        this.mParent.innerNext(this, t);
+        if (this.sourceMode == flow.FC.ASYNC) {
+            this.mParent.drain();
+        } else {
+            this.mParent.innerNext(this, t);
+        }
     }
     
     onError(t: Error) : void {

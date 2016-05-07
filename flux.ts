@@ -586,6 +586,40 @@ class FluxFlatMap<T, R> extends Flux<R> {
     }
     
     subscribe(s: rs.Subscriber<R>) : void {
+        /*
+        const c = (this.mSource as Object) as flow.Callable<T>;
+        if (c.call) {
+            var v;
+            try {            
+                v = c.call();
+            } catch (ex) {
+                sp.EmptySubscription.error(s, ex);
+                return;
+            }
+            
+            if (v == null) {
+                sp.EmptySubscription.complete(s);
+                return;
+            }
+            
+            var p;
+            
+            try {            
+                p = this.mMapper(v);
+            } catch (ex) {
+                sp.EmptySubscription.error(s, ex);
+                return;
+            }        
+
+            if (p == null) {
+                sp.EmptySubscription.error(s, new Error("The mapper returned a null Publisher"));
+                return;
+            }
+            
+            p.subscribe(s);
+            return;
+        }
+        */
         this.mSource.subscribe(new flatmap.FlatMapSubscriber<T, R>(
             s, this.mMapper, this.mDelayError,
             this.mMaxConcurrency, this.mPrefetch
