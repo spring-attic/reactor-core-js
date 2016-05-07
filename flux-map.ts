@@ -63,3 +63,39 @@ export class FluxMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
         this.s.cancel();
     }
 }
+
+export class FluxHideSubscriber<T> implements rs.Subscriber<T>, rs.Subscription {
+    private s: rs.Subscription;
+    
+    constructor(private mActual: rs.Subscriber<T>) {
+        
+    }
+    
+    onSubscribe(s: rs.Subscription) {
+        if (sp.SH.validSubscription(this.s, s)) {
+            this.s = s;
+            
+            this.mActual.onSubscribe(this);
+        }
+    }
+
+    onNext(t: T) {
+        this.mActual.onNext(t);
+    }
+    
+    onError(t: Error) {
+        this.mActual.onError(t);
+    }
+    
+    onComplete() {
+        this.mActual.onComplete();
+    }
+    
+    request(n: number) {
+        this.s.request(n);
+    }
+    
+    cancel() {
+        this.s.cancel();
+    }
+}

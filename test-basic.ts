@@ -1,10 +1,21 @@
 import * as flux from './flux';
 
+/*
 flux.Flux.range(1, 10)
 .map(v => v + 1)
 .filter(v => (v & 1) == 0)
 .consume(t => console.log(t));
+*/
 
+flux.Flux.range(1, 10)
+.flatMap(v => flux.Flux.range(v, 2).hide())
+.consume(t => console.log(t), e => console.log(e), () => console.log("Done"));
+
+flux.Flux.range(1, 10)
+.flatMap(v => flux.Flux.range(v, 2))
+.consume(t => console.log(t), e => console.log(e), () => console.log("Done"));
+
+/*
 var count = [ 1, 1000, 1000000 ];
 var sink = [ 0 ];
 
@@ -35,3 +46,4 @@ for (var c of count) {
     console.log("");
     console.log("Count: " + c + "; " + (ops / 10) + " ops/s");
 }
+*/
