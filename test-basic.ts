@@ -22,7 +22,6 @@ var sink = [ 0 ];
 for (var c of count) {
     var ops = 0;
 
-    const source6 = flux.Flux.just(1);
     const source0 = flux.Flux.range(1, c);
     const source1 = flux.Flux.range(1, c).flatMap(v => flux.Flux.just(v));
     const source2 = flux.Flux.range(1, c).flatMap(v => flux.Flux.range(v, 2));
@@ -31,6 +30,7 @@ for (var c of count) {
     const d = 1000000 / c;
     const source4 = flux.Flux.range(1, c).flatMap(v => flux.Flux.range(v, d));
     const source5 = flux.Flux.range(1, c).flatMap(v => flux.Flux.range(v, d).hide());
+    const source6 = flux.Flux.just(1);
     
     const array = [null];
     

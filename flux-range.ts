@@ -23,13 +23,26 @@ export class FluxRangeSubscription implements flow.QueueSubscription<number> {
         }
         var r = this.requested;
         this.requested = r + n;
-        
+
         if (r == 0) {
-            r = n;
-            var e = 0;
-            var i = this.mIndex;
             const f = this.mEnd;
             const a = this.mActual;
+            var i = this.mIndex;
+
+            if (n >= f - i) {
+                for ( ; i != f; i++) {
+                    if (this.cancelled) {
+                        return;
+                    }
+                    a.onNext(i);
+                }
+                if (!this.cancelled) {
+                    a.onComplete();
+                }
+                return;
+            }            
+            r = n;
+            var e = 0;
             
             for (;;) {
                 if (this.cancelled) {
