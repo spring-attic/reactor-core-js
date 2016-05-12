@@ -4,6 +4,6 @@
 !./.vscode/tasks.json
 !**/.vscode/tasks.json
 **/.vscode
-js
 *.js
 *.js.map
+**/*.d.ts

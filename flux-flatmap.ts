@@ -98,7 +98,7 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
         }
     }
     
-    addInner(inner: FlatMapInnerSubscriber<T, R>) {
+    private addInner(inner: FlatMapInnerSubscriber<T, R>) {
         //this.subscribers.push(inner);
         const i = this.pollIndex();
         this.subscribers[i] = inner;
@@ -524,7 +524,7 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
     }
 }
 
-class FlatMapInnerSubscriber<T, R> implements rs.Subscriber<R> {
+export class FlatMapInnerSubscriber<T, R> implements rs.Subscriber<R> {
     
     queue: flow.Queue<R>;
     

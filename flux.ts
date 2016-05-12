@@ -180,7 +180,7 @@ export class DirectProcessor<T> extends Flux<T> implements rs.Processor<T, T> {
     }
 }
 
-class DirectSubscription<T> implements rs.Subscription {
+export class DirectSubscription<T> implements rs.Subscription {
     
     private mParent: DirectProcessor<T>;
     

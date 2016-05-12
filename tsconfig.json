@@ -3,6 +3,7 @@
         "target": "es6",
         "module": "commonjs",
         "sourceMap": true,
-        "outDir": "./js"
+        "outDir": "./js",
+        "declaration": true
     }
 }
