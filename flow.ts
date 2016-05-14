@@ -66,3 +66,46 @@ export class Cancellations {
     private static REJECTED_INSTANCE = new CallbackCancellation(() => { });
     static get REJECTED() : Cancellation { return Cancellations.REJECTED_INSTANCE; }
 }
+
+export class CancelledCancellation implements Cancellation {
+    private static INSTANCE_0 = new CancelledCancellation();
+    static get INSTANCE() : Cancellation { return CancelledCancellation.INSTANCE_0; }
+
+    dispose() : void {
+        
+    }
+}
+
+export class BooleanCancellation implements Cancellation {
+    private mCancelled: boolean;
+    
+    dispose() : void {
+        this.mCancelled = true;
+    }
+    
+    isCancelled() : boolean {
+        return this.mCancelled;
+    }
+}
+
+export class ActionCancellation implements Cancellation {
+    private mCancelled: boolean;
+    
+    constructor(private mAction: () => void) {
+        
+    }
+    
+    dispose() : void {
+        if (!this.mCancelled) {
+            this.mCancelled = true;
+            var a = this.mAction;
+            this.mAction = null;
+            
+            a();        
+        }
+    }
+    
+    isCancelled() : boolean {
+        return this.mCancelled;
+    }
+}

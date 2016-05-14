@@ -1,5 +1,5 @@
 import * as flux from './flux';
-
+import * as o from './observable-ex'
 /*
 flux.Flux.range(1, 10)
 .map(v => v + 1)
@@ -34,6 +34,8 @@ for (var c of count) {
     
     const array = [null];
     
+    const source7 = o.Ox.range(1, c);
+    
     for (var i = 0; i < 10; i++) {
         const now = new Date().getTime();
         var next = now;
@@ -41,7 +43,8 @@ for (var c of count) {
         
         for (;;) {
             
-            source0.consume(e => sink[0] = e);
+            source7.consume(e => sink[0] = e);
+            
             //array.push(1);
             //array.splice(1, 1);
             //array[0] = 1;
