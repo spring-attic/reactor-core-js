@@ -8,6 +8,8 @@ import * as flatmap from "./flux-flatmap";
 import * as subscriber from "./subscriber";
 import * as sp from './subscription';
 import * as util from './util';
+import * as sch from './scheduler';
+import * as timed from './flux-timed';
 
 export abstract class Flux<T> implements rs.Publisher<T> {
     
@@ -48,6 +50,14 @@ export abstract class Flux<T> implements rs.Publisher<T> {
     
     static fromArray<T>(array: Array<T>) : Flux<T> {
         return new FluxArray<T>(array);
+    }
+    
+    static timer(delay: number, scheduler?: sch.TimedScheduler) : Flux<number> {
+        return new FluxTimer(delay, scheduler === undefined ? sch.DefaultScheduler.INSTANCE : scheduler);
+    }
+
+    static interval(initialDelay: number, period: number, scheduler?: sch.TimedScheduler) : Flux<number> {
+        return new FluxInterval(initialDelay, period, scheduler === undefined ? sch.DefaultScheduler.INSTANCE : scheduler);
     }
     
     // ------------------------------------
@@ -640,5 +650,35 @@ class FluxHide<T> extends Flux<T> {
     
     subscribe(s: rs.Subscriber<T>) {
         this.mSource.subscribe(new map.FluxHideSubscriber<T>(s));
+    }
+}
+
+class FluxTimer extends Flux<number> {
+    constructor(private delay : number, private scheduler : sch.TimedScheduler) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<number>) : void {
+        var p = new timed.TimedSubscription(s);
+        s.onSubscribe(p);
+        
+        var c = this.scheduler.scheduleDelayed(p.run, this.delay);
+        
+        p.setFuture(c);
+    }
+}
+
+class FluxInterval extends Flux<number> {
+    constructor(private initialDelay : number, private period: number, private scheduler : sch.TimedScheduler) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<number>) : void {
+        var p = new timed.PeriodicTimedSubscription(s);
+        s.onSubscribe(p);
+        
+        var c = this.scheduler.schedulePeriodic(p.run, this.initialDelay, this.period);
+        
+        p.setFuture(c);
     }
 }
