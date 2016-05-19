@@ -77,8 +77,11 @@ export class ConcatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscript
     }
     
     cancel() : void {
-        this.s.cancel();
-        this.inner.cancel();    
+        if (!this.cancelled) {
+            this.cancelled = true;
+            this.s.cancel();
+            this.inner.cancel();  
+        }  
     }
     
     innerError(t: Error) : void {
