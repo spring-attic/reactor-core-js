@@ -1,23 +1,13 @@
 import * as rs from './reactivestreams-spec';
 import * as flow from './flow';
 
-export class SH {
-    static validRequest(n: number) : boolean {
-        if (n <= 0) {
-            throw new Error("n > 0 required but it was " + n);
-        }
-        return true;
+class CancelledSubscription implements rs.Subscription {
+    request(n: number) : void {
+        // deliberately ignored
     }
     
-    static validSubscription(current: rs.Subscription, s: rs.Subscription) : boolean {
-        if (s == null) {
-            throw new Error("s is null");
-        }
-        if (current != null) {
-            s.cancel();
-            throw new Error("Subscription already set!");
-        }
-        return true;
+    cancel() : void {
+        // deliberately ignored
     }
 }
 
@@ -289,4 +279,28 @@ export class SuppressFusionSubscriber<T> implements rs.Subscriber<T>, flow.Queue
         // deliberately no op
     }
     
+}
+
+export class SH {
+    static validRequest(n: number) : boolean {
+        if (n <= 0) {
+            throw new Error("n > 0 required but it was " + n);
+        }
+        return true;
+    }
+    
+    static validSubscription(current: rs.Subscription, s: rs.Subscription) : boolean {
+        if (s == null) {
+            throw new Error("s is null");
+        }
+        if (current != null) {
+            s.cancel();
+            throw new Error("Subscription already set!");
+        }
+        return true;
+    }
+    
+    static CANCELLED : rs.Subscription = new CancelledSubscription();
+    
+    static TERMINAL_ERROR = new Error("Terminated");
 }

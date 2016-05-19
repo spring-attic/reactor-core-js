@@ -10,6 +10,7 @@ import * as sp from './subscription';
 import * as util from './util';
 import * as sch from './scheduler';
 import * as timed from './flux-timed';
+import * as concat from './flux-concat';
 
 export abstract class Flux<T> implements rs.Publisher<T> {
     
@@ -96,7 +97,14 @@ export abstract class Flux<T> implements rs.Publisher<T> {
 
     hide() : Flux<T> {
         return new FluxHide<T>(this);
-    }    
+    }
+    
+    concatMap<R>(mapper: (t: T) => rs.Publisher<R>, delayError?: boolean, prefetch?: number) : Flux<R> {
+        return new FluxConcatMap<T, R>(this, mapper, 
+            delayError === undefined ? false : delayError,
+            prefetch === undefined ? 2 : prefetch)
+    }
+    
     // ------------------------------------
     
     consume(onNext : (t: T) => void, onError? : (t : Error) => void, onComplete? : () => void) : flow.Cancellation {
@@ -680,5 +688,17 @@ class FluxInterval extends Flux<number> {
         var c = this.scheduler.schedulePeriodic(p.run, this.initialDelay, this.period);
         
         p.setFuture(c);
+    }
+}
+
+class FluxConcatMap<T, R> extends Flux<R> {
+    constructor(private source: rs.Publisher<T>, 
+            private mapper: (t: T) => rs.Publisher<R>, 
+            private delayError: boolean, private prefetch: number) {
+        super();        
+    }
+    
+    subscribe(s: rs.Subscriber<R>) : void {
+        this.source.subscribe(new concat.ConcatMapSubscriber<T, R>(s, this.mapper, this.delayError, this.prefetch));
     }
 }
