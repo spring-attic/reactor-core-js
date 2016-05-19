@@ -15,6 +15,7 @@ import * as zip from './flux-zip';
 import * as collect from './flux-collect';
 import * as combine from './flux-combine';
 
+/** A publisher with operators to work with reactive streams of 0 to N elements optionally followed by an error or completion. */
 export abstract class Flux<T> implements rs.Publisher<T> {
     
     private static bufferSize = 128;
