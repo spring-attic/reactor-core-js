@@ -83,3 +83,50 @@ export class FluxTakeSubscriber<T> implements rs.Subscriber<T>, rs.Subscription 
         this.s.cancel();
     }
 }
+
+export class FluxSkipSubscriber<T> implements rs.Subscriber<T>, rs.Subscription {
+    private s: rs.Subscription;
+    private remaining : number;
+    
+    constructor(private actual: rs.Subscriber<T>, private n : number) {
+        this.remaining = n;
+    }
+    
+    onSubscribe(s: rs.Subscription) : void {
+        if (sp.SH.validSubscription(this.s, s)) {
+            this.s = s;
+            
+            this.actual.onSubscribe(this);
+            
+            s.request(this.n);
+        }    
+    }
+    
+    onNext(t: T) : void {
+        var r = this.remaining;
+        if (r != 0) {
+            r--;
+            this.remaining = r;
+            if (r != 0) {
+                return;
+            }
+        }
+        this.actual.onNext(t);
+    }
+    
+    onError(t: Error) : void {
+        this.actual.onError(t);
+    }
+    
+    onComplete() : void {
+        this.actual.onComplete();
+    }
+    
+    request(n: number) {
+        this.s.request(n);
+    }
+    
+    cancel() : void {
+        this.s.cancel();
+    }
+}

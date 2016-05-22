@@ -14,6 +14,7 @@ import * as concat from './flux-concat';
 import * as zip from './flux-zip';
 import * as collect from './flux-collect';
 import * as combine from './flux-combine';
+import * as lcy from './flux-lifecycle';
 
 /** A publisher with operators to work with reactive streams of 0 to N elements optionally followed by an error or completion. */
 export abstract class Flux<T> implements rs.Publisher<T> {
@@ -200,6 +201,100 @@ export abstract class Flux<T> implements rs.Publisher<T> {
         return Flux.combineLatest2(this, other, combiner, prefetch);
     }
     
+    doOnSubscribe(onSubscribe: (s: rs.Subscription) => void) : Flux<T> {
+        return new FluxDoOnLifecycle<T>(this,
+            onSubscribe,
+            v => { },
+            v => { },
+            e => { },
+            () => { },
+            () => { },
+            n => { },
+            () => { } 
+        );
+
+    }
+    
+    doOnNext(onNext: (t: T) => void) : Flux<T> {
+        return new FluxDoOnLifecycle<T>(this,
+            s => { },
+            onNext,
+            v => { },
+            e => { },
+            () => { },
+            () => { },
+            n => { },
+            () => { } 
+        );
+    }
+    
+    doOnAfterNext(onAfterNext: (t: T) => void) : Flux<T> {
+        return new FluxDoOnLifecycle<T>(this,
+            s => { },
+            v => { },
+            onAfterNext,
+            e => { },
+            () => { },
+            () => { },
+            n => { },
+            () => { } 
+        );
+
+    }
+
+    doOnError(onError: (t: Error) => void) : Flux<T> {
+        return new FluxDoOnLifecycle<T>(this,
+            s => { },
+            v => { },
+            v => { },
+            onError,
+            () => { },
+            () => { },
+            n => { },
+            () => { } 
+        );
+    }
+
+    doOnComplete(onComplete: () => void) : Flux<T> {
+        return new FluxDoOnLifecycle<T>(this,
+            s => { },
+            v => { },
+            v => { },
+            e => { },
+            onComplete,
+            () => { },
+            n => { },
+            () => { } 
+        );
+    }
+    
+    doAfterTerminated(onAfterTerminate: () => void) : Flux<T> {
+        return new FluxDoOnLifecycle<T>(this,
+            s => { },
+            v => { },
+            v => { },
+            e => { },
+            () => { },
+            onAfterTerminate,
+            n => { },
+            () => { } 
+        );
+    }
+    
+    doOnCancel(onCancel: () => void) : Flux<T> {
+        return new FluxDoOnLifecycle<T>(this,
+            s => { },
+            v => { },
+            v => { },
+            e => { },
+            () => { },
+            () => { },
+            n => { },
+            onCancel 
+        );
+
+    }
+    
     // ------------------------------------
     
     consume(onNext : (t: T) => void, onError? : (t : Error) => void, onComplete? : () => void) : flow.Cancellation {
@@ -266,7 +361,7 @@ export class DirectProcessor<T> extends Flux<T> implements rs.Processor<T, T> {
         }
         const a = this.subscribers;
         for (var s of a) {
-            s.mActual.onNext(t);
+            s.actual.onNext(t);
         }
     }
     
@@ -278,7 +373,7 @@ export class DirectProcessor<T> extends Flux<T> implements rs.Processor<T, T> {
         this.mDone = true;
         const a = this.subscribers;
         for (var s of a) {
-            s.mActual.onError(t);
+            s.actual.onError(t);
         }
         a.length = 0;
     }
@@ -287,7 +382,7 @@ export class DirectProcessor<T> extends Flux<T> implements rs.Processor<T, T> {
         this.mDone = true;
         const a = this.subscribers;
         for (var s of a) {
-            s.mActual.onComplete();
+            s.actual.onComplete();
         }
         a.length = 0;
     }
@@ -295,15 +390,9 @@ export class DirectProcessor<T> extends Flux<T> implements rs.Processor<T, T> {
 
 export class DirectSubscription<T> implements rs.Subscription {
     
-    private mParent: DirectProcessor<T>;
-    
-    mActual: rs.Subscriber<T>;
-    
     mRequested: number;
     
-    constructor(actual: rs.Subscriber<T>, parent: DirectProcessor<T>) {
-        this.mParent = parent;
-        this.mActual = actual;
+    constructor(public actual: rs.Subscriber<T>, public parent: DirectProcessor<T>) {
         this.mRequested = 0;
     }
     
@@ -314,7 +403,7 @@ export class DirectSubscription<T> implements rs.Subscription {
     }
     
     cancel() {
-        this.mParent.remove(this);
+        this.parent.remove(this);
     }
 }
 
@@ -485,17 +574,13 @@ export class UnicastProcessor<T> extends Flux<T> implements rs.Processor<T, T>, 
 // ----------------------------------------------------------------------
 
 class FluxRange extends Flux<number> implements flow.Fuseable {
-    private mStart: number;
-    private mEnd: number;
-    
-    constructor(public start: number, public count: number) {
+
+    constructor(private start: number, private count: number) {
         super();
-        this.mStart = start;
-        this.mEnd = start + count;
     }
     
     subscribe(s: rs.Subscriber<number>) : void {
-        s.onSubscribe(new range.FluxRangeSubscription(this.mStart, this.mEnd, s));
+        s.onSubscribe(new range.FluxRangeSubscription(this.start, this.start + this.count, s));
     }
     
     isFuseable() { }
@@ -505,17 +590,12 @@ class FluxRange extends Flux<number> implements flow.Fuseable {
 
 class FluxMap<T, R> extends Flux<R> {
     
-    private mSource : rs.Publisher<T>;
-    private mMapper : (t: T) => R;
-    
-    constructor(source: rs.Publisher<T>, mapper: (t: T) => R) {
+    constructor(private source: rs.Publisher<T>, private mapper: (t: T) => R) {
         super();
-        this.mSource = source;
-        this.mMapper = mapper;
     }
     
     subscribe(s: rs.Subscriber<R>) {
-        this.mSource.subscribe(new map.FluxMapSubscriber<T, R>(s, this.mMapper));
+        this.source.subscribe(new map.FluxMapSubscriber<T, R>(s, this.mapper));
     }
 }
 
@@ -548,30 +628,26 @@ class FluxNever<T> extends Flux<T> {
 }
 
 class FluxJust<T> extends Flux<T> implements flow.ScalarCallable<T> {
-    private mValue : T;
     
-    constructor(value: T) {
+    constructor(private value: T) {
         super();
-        this.mValue = value;
     }
     
     isScalar() { }
     
     subscribe(s: rs.Subscriber<T>) : void {
-        s.onSubscribe(new sp.ScalarSubscription<T>(this.mValue, s));
+        s.onSubscribe(new sp.ScalarSubscription<T>(this.value, s));
     }
     
     call() : T {
-        return this.mValue;
+        return this.value;
     }
 }
 
 class FluxFromCallable<T> extends Flux<T> implements flow.Callable<T> {
-    private mCallable: () => T;
     
-    constructor(callable: () => T) {
+    constructor(private callable: () => T) {
         super();
-        this.mCallable = callable;
     }
     
     subscribe(s: rs.Subscriber<T>) : void {
@@ -580,7 +656,7 @@ class FluxFromCallable<T> extends Flux<T> implements flow.Callable<T> {
         
         var v;
         try {
-            v = this.mCallable();
+            v = this.callable();
         } catch (ex) {
             s.onError(ex);
             return;
@@ -593,23 +669,20 @@ class FluxFromCallable<T> extends Flux<T> implements flow.Callable<T> {
     }
     
     call() : T {
-        return this.mCallable();
+        return this.callable();
     }
 }
 
 class FluxDefer<T> extends Flux<T> {
-    private mSupplier: () => rs.Publisher<T>;
-    
-    constructor(supplier: () => rs.Publisher<T>) {
+    constructor(private supplier: () => rs.Publisher<T>) {
         super();
-        this.mSupplier = supplier;
     }
     
     subscribe(s: rs.Subscriber<T>) {
         var p;
         
         try {
-            p = this.mSupplier();
+            p = this.supplier();
         } catch (ex) {
             sp.EmptySubscription.error(s, ex);
             return;
@@ -626,82 +699,70 @@ class FluxDefer<T> extends Flux<T> {
 
 class FluxFilter<T> extends Flux<T> {
     
-    private mSource : rs.Publisher<T>;
-    private mPredicate : (t: T) => boolean;
-    
-    constructor(source: rs.Publisher<T>, predicate: (t: T) => boolean) {
+    constructor(private source: rs.Publisher<T>, private predicate: (t: T) => boolean) {
         super();
-        this.mSource = source;
-        this.mPredicate = predicate;
     }
     
     subscribe(s: rs.Subscriber<T>) {
-        this.mSource.subscribe(new filter.FluxFilterSubscriber<T>(s, this.mPredicate));
+        this.source.subscribe(new filter.FluxFilterSubscriber<T>(s, this.predicate));
     }
 }
 
 class FluxLift<T, R> extends Flux<R> {
     
-    private mLifter: (s: rs.Subscriber<R>) => rs.Subscriber<T>;
-    
-    private mSource: rs.Publisher<T>;
-    
-    constructor(source: rs.Publisher<T>, lifter: (s: rs.Subscriber<R>) => rs.Subscriber<T>) {
+    constructor(private source: rs.Publisher<T>, private lifter: (s: rs.Subscriber<R>) => rs.Subscriber<T>) {
         super();
-        this.mSource = source;
-        this.mLifter = lifter;
     }
     
     subscribe(s: rs.Subscriber<R>) : void {
-        this.mSource.subscribe(this.mLifter(s));
+        this.source.subscribe(this.lifter(s));
     }
 }
 
 class FluxArray<T> extends Flux<T> implements flow.Fuseable {
-    private mArray: Array<T>;
     
-    constructor(array: Array<T>) {
+    constructor(private array: Array<T>) {
         super();
-        this.mArray = array;
     }
     
     isFuseable() { }
     
     subscribe(s: rs.Subscriber<T>) {
-        s.onSubscribe(new range.FluxArraySubscription<T>(this.mArray, s));
+        s.onSubscribe(new range.FluxArraySubscription<T>(this.array, s));
     }
 }
 
 class FluxTake<T> extends Flux<T> {
-    private mSource : Flux<T>;
-    private mCount : number;
     
-    constructor(source: Flux<T>, n: number) {
+    constructor(private source: Flux<T>, private n: number) {
         super();
-        this.mSource = source;
-        this.mCount = n;
     }
     
     subscribe(s: rs.Subscriber<T>) {
-        this.mSource.subscribe(new take.FluxTakeSubscriber<T>(this.mCount, s));
+        this.source.subscribe(new take.FluxTakeSubscriber<T>(this.n, s));
+    }
+}
+
+class FluxSkip<T> extends Flux<T> {
+    
+    constructor(private source: Flux<T>, private n: number) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) {
+        this.source.subscribe(new take.FluxSkipSubscriber<T>(s, this.n));
     }
 }
 
 class FluxFlatMap<T, R> extends Flux<R> {
-    private mSource: rs.Publisher<T>;
-    private mMapper: (t: T) => rs.Publisher<R>;
-    private mDelayError: boolean;
-    private mMaxConcurrency: number;
-    private mPrefetch: number;
     
-    constructor(source: rs.Publisher<T>, mapper: (t: T) => rs.Publisher<R>,
-            delayError: boolean, maxConcurrency: number, prefetch: number) {
+    constructor(
+            private source: rs.Publisher<T>, 
+            private mapper: (t: T) => rs.Publisher<R>,
+            private delayError: boolean, 
+            private maxConcurrency: number, 
+            private prefetch: number) {
         super();
-        this.mSource = source;
-        this.mMapper = mapper;
-        this.mDelayError = delayError;
-        this.mMaxConcurrency = maxConcurrency;
-        this.mPrefetch = prefetch;        
     }
     
     subscribe(s: rs.Subscriber<R>) : void {
@@ -739,9 +800,9 @@ class FluxFlatMap<T, R> extends Flux<R> {
             return;
         }
         */
-        this.mSource.subscribe(new flatmap.FlatMapSubscriber<T, R>(
-            s, this.mMapper, this.mDelayError,
-            this.mMaxConcurrency, this.mPrefetch
+        this.source.subscribe(new flatmap.FlatMapSubscriber<T, R>(
+            s, this.mapper, this.delayError,
+            this.maxConcurrency, this.prefetch
         ));    
     }
 }
@@ -887,4 +948,32 @@ class FluxCombineLatest<R> extends Flux<R> {
         parent.subscribe(a, n);
     }    
     
+}
+
+class FluxDoOnLifecycle<T> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>,
+            private onSubscribe: (s: rs.Subscription) => void,
+            private onNext: (t: T) => void,
+            private mOnAfterNext: (t: T) => void,
+            private onError: (t: Error) => void,
+            private onComplete: () => void,
+            private onAfterTerminate: () => void,
+            private onRequest: (n: number) => void,
+            private onCancel: () => void
+    ) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        this.source.subscribe(new lcy.DoOnLifecycle(s,
+                this.onSubscribe,
+                this.onNext,
+                this.mOnAfterNext,
+                this.onError,
+                this.onComplete,
+                this.onAfterTerminate,
+                this.onRequest,
+                this.onCancel
+        ));       
+    }
 }
