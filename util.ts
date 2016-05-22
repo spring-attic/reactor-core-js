@@ -12,7 +12,9 @@ export class SpscArrayQueue<T> implements flow.Queue<T> {
             throw new Error("capacity must be power-of-2");
         }
         this.mMask = capacity - 1;
-        this.mArray = new Array<T>(capacity);
+        const a = new Array<T>(capacity);
+        a.fill(null);
+        this.mArray = a;
         this.mProducerIndex = 0;
         this.mConsumerIndex = 0;
     } 
@@ -80,6 +82,7 @@ export class SpscLinkedArrayQueue<T> implements flow.Queue<T> {
         }
         this.mMask = capacity - 1;
         const a = new Array<any>(capacity + 1);
+        a.fill(null);
         this.mProducerArray = a;
         this.mProducerIndex = 0;
         this.mConsumerArray = a;
@@ -94,7 +97,7 @@ export class SpscLinkedArrayQueue<T> implements flow.Queue<T> {
         const m = this.mMask;
         const pi = this.mProducerIndex;
         const o1 = (pi + 1) & m;
-        const o = (pi + 1) & m;
+        const o = pi & m;
         
         if (a[o1] != null) {
             const b = new Array<any>(m + 2);

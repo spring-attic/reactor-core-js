@@ -18,8 +18,10 @@ import * as combine from './flux-combine';
 /** A publisher with operators to work with reactive streams of 0 to N elements optionally followed by an error or completion. */
 export abstract class Flux<T> implements rs.Publisher<T> {
     
+    /** The default buffer size. */
     private static bufferSize = 128;
     
+    /** Returns the default buffer size. */
     public static get BUFFER_SIZE() { return Flux.bufferSize; };
     
     abstract subscribe(s: rs.Subscriber<T>) : void;
@@ -106,6 +108,22 @@ export abstract class Flux<T> implements rs.Publisher<T> {
         return new FluxConcatMap(Flux.fromArray(sources), v => v, delayError === undefined ? false : delayError, prefetch === undefined ? Flux.BUFFER_SIZE : prefetch);
     }
     
+    static combineLatest<R>(sources: rs.Publisher<Object>[], combiner: (t: Array<Object>) => R, prefetch?: number) : Flux<R> {
+        return new FluxCombineLatest<R>(sources, combiner, prefetch === undefined ? Flux.BUFFER_SIZE : prefetch);
+    }
+    
+    static combineLatest2<T1, T2, R>(p1: rs.Publisher<T1>, p2: rs.Publisher<T2>, combiner: (t1: T1, t2: T2) => R, prefetch?: number) : Flux<R> {
+        return Flux.combineLatest([p1, p2], a => combiner(a[0] as T1, a[1] as T2), prefetch);        
+    }
+
+    static combineLatest3<T1, T2, T3, R>(p1: rs.Publisher<T1>, p2: rs.Publisher<T2>, p3: rs.Publisher<T3>, combiner: (t1: T1, t2: T2, t3: T3) => R, prefetch?: number) : Flux<R> {
+        return Flux.combineLatest([p1, p2, p3], a => combiner(a[0] as T1, a[1] as T2, a[2] as T3), prefetch);        
+    }
+
+    static combineLatest4<T1, T2, T3, T4, R>(p1: rs.Publisher<T1>, p2: rs.Publisher<T2>, p3: rs.Publisher<T3>, p4: rs.Publisher<T4>, combiner: (t1: T1, t2: T2, t3: T3, t4: T4) => R, prefetch?: number) : Flux<R> {
+        return Flux.combineLatest([p1, p2, p3, p4], a => combiner(a[0] as T1, a[1] as T2, a[2] as T3, a[3] as T4), prefetch);        
+    }
+    
     // ------------------------------------
     
     map<R>(mapper: (t: T) => R) : Flux<R> {
@@ -176,6 +194,10 @@ export abstract class Flux<T> implements rs.Publisher<T> {
     
     withLatestFrom<U, R>(other: rs.Publisher<U>, combiner: (t: T, u: U) => R) : Flux<R> {
         return new FluxWithLatestFrom(this, other, combiner);
+    }
+    
+    combineWith<U, R>(other: rs.Publisher<U>, combiner: (t: T, u: U) => R, prefetch?: number) {
+        return Flux.combineLatest2(this, other, combiner, prefetch);
     }
     
     // ------------------------------------
@@ -849,4 +871,20 @@ class FluxWithLatestFrom<T, U, R> extends Flux<R> {
         
         this.source.subscribe(parent);
     }
+}
+
+class FluxCombineLatest<R> extends Flux<R> {
+    constructor(private sources: Array<rs.Publisher<Object>>, private combiner: (a: Array<Object>) => R, private prefetch : number) {
+        super();
+    }
+
+    subscribe(s: rs.Subscriber<R>) : void {
+        var a = this.sources;
+        var n = a.length;
+        var parent = new combine.CombineLatest<R>(s, this.combiner, this.prefetch, n);
+        s.onSubscribe(parent);
+        
+        parent.subscribe(a, n);
+    }    
+    
 }
