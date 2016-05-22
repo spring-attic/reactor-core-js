@@ -37,7 +37,7 @@ export interface TimedWorker extends Worker {
 export class DefaultScheduler implements TimedScheduler {
     private static P_INSTANCE = new DefaultScheduler();
     
-    public get INSTANCE() : TimedScheduler { return DefaultScheduler.P_INSTANCE; }
+    public static get INSTANCE() : TimedScheduler { return DefaultScheduler.P_INSTANCE; }
 
     schedule(task: () => void) : flow.Cancellation {
         const id = setTimeout(task, 0);

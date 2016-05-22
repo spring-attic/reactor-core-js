@@ -1,26 +1,18 @@
 import * as rs from './reactivestreams-spec';
 import * as flow from './flow';
 
-export class SH {
-    static validRequest(n: number) : boolean {
-        if (n <= 0) {
-            throw new Error("n > 0 required but it was " + n);
-        }
-        return true;
+/** Class representing a cancelled subscription that ignores Subscription calls. */
+class CancelledSubscription implements rs.Subscription {
+    request(n: number) : void {
+        // deliberately ignored
     }
     
-    static validSubscription(current: rs.Subscription, s: rs.Subscription) : boolean {
-        if (s == null) {
-            throw new Error("s is null");
-        }
-        if (current != null) {
-            s.cancel();
-            throw new Error("Subscription already set!");
-        }
-        return true;
+    cancel() : void {
+        // deliberately ignored
     }
 }
 
+/** A subscription that does not react to any Subscription calls and appears to be empty. */
 export class EmptySubscription implements flow.QueueSubscription<any> {
     request(n: number) : void {
         // deliberately ignored
@@ -54,19 +46,25 @@ export class EmptySubscription implements flow.QueueSubscription<any> {
         // no op
     }
     
+    /** Set the singleton empty instance on the target subscriber and complete it. */
     static complete(s : rs.Subscriber<any>) : void {
         s.onSubscribe(EmptySubscription.INSTANCE);
         s.onComplete();
     }
     
+    /** Set the singleton empty instance on the target and call onError on it. */
     static error(s : rs.Subscriber<any>, e : Error) : void {
         s.onSubscribe(EmptySubscription.INSTANCE);
         s.onError(e);
     }
     
-    public static INSTANCE : rs.Subscription = new EmptySubscription();
+    private static EMPTY_INSTANCE = new EmptySubscription();
+    
+    /** Returns the singleton instance of this class. */
+    public static get INSTANCE() : rs.Subscription { return EmptySubscription.EMPTY_INSTANCE };
 }
 
+/** Emits a constant value once there is a request for it. */
 export class ScalarSubscription<T> implements flow.QueueSubscription<T> {
     private mActual : rs.Subscriber<T>;
     private mValue : T;
@@ -139,8 +137,9 @@ enum FusedState {
     COMPLETE
 }
 
+/** A fuseable Subscription that holds a single value and emits it when there is request for it. */
 export class DeferrendScalarSubscription<T> implements flow.QueueSubscription<T> {
-    private mActual: rs.Subscriber<T>;
+    protected mActual: rs.Subscriber<T>;
     private mValue: T;
     private mState: DeferredState;
     private mFused: FusedState;
@@ -289,4 +288,40 @@ export class SuppressFusionSubscriber<T> implements rs.Subscriber<T>, flow.Queue
         // deliberately no op
     }
     
+}
+
+/** Utility methods to validate requests and Subscription status. */
+export class SH {
+    /** Verify that the number is positive. */
+    static validRequest(n: number) : boolean {
+        if (n <= 0) {
+            throw new Error("n > 0 required but it was " + n);
+        }
+        return true;
+    }
+    
+    /** Verify that the current Subscription is null and the new Subscription is not null. */
+    static validSubscription(current: rs.Subscription, s: rs.Subscription) : boolean {
+        if (s == null) {
+            throw new Error("s is null");
+        }
+        if (current != null) {
+            s.cancel();
+            if (current != SH.CANCELLED) {
+                throw new Error("Subscription already set!");
+            }
+            return false;
+        }
+        return true;
+    }
+    
+    private static CANCELLED_INSTANCE = new CancelledSubscription();
+    
+    /** The standard cancelled Subscription instance. */
+    static get CANCELLED() : rs.Subscription { return SH.CANCELLED_INSTANCE; };
+    
+    private static TERMINAL_ERROR_INSTANCE = new Error("Terminated");
+
+    /** The standard exception indicating no more exception can be accumulated. */
+    static get TERMINAL_ERROR() : Error { return SH.TERMINAL_ERROR_INSTANCE; }
 }

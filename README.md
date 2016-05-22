@@ -3,3 +3,23 @@
 # reactor-core-js
 
 The Reactive-Streams based implementation of Reactor-Core in TypeScript.
+
+# Importing
+
+```
+npm install reactor-core-js
+```
+
+[NPM](https://www.npmjs.com/package/reactor-core-js/)
+
+# Usage
+
+```javascript
+import { Flux } from './node_modules/reactor-core-js/flux';
+
+Flux.range(1, 10)
+.take(5)
+.map(v => v * 2)
+.flatMap(v => Flux.range(v, 2))
+.consume(v => console.log(v));
+```

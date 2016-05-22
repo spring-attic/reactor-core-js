@@ -1,6 +1,14 @@
 import * as flux from './flux';
-import * as o from './observable-ex'
+import * as ox from './observable-ex';
+
+
+console.log("Benchmarking...");
 /*
+console.log("Testing...");
+
+flux.Flux.range(1, 10).concatMap(v => flux.Flux.range(v, 2))
+.consume(v => console.log(v));
+
 flux.Flux.range(1, 10)
 .map(v => v + 1)
 .filter(v => (v & 1) == 0)
@@ -34,7 +42,9 @@ for (var c of count) {
     
     const array = [null];
     
-    const source7 = o.Ox.range(1, c);
+    const source7 = ox.Ox.range(1, c);
+    
+    const source8 = flux.Flux.range(1, c).concatMap(v => flux.Flux.range(v, d));
     
     for (var i = 0; i < 10; i++) {
         const now = new Date().getTime();
@@ -43,7 +53,7 @@ for (var c of count) {
         
         for (;;) {
             
-            source7.consume(e => sink[0] = e);
+            source8.consume(e => sink[0] = e);
             
             //array.push(1);
             //array.splice(1, 1);
@@ -66,3 +76,6 @@ for (var c of count) {
     console.log("");
     console.log("Count: " + c + "; " + (ops / 5) + " ops/s");
 }
+
+console.log("");
+console.log("Benchmark complete.");

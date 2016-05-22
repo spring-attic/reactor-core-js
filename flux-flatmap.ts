@@ -26,8 +26,6 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
 
     private mIndex: number;
     
-    private static TERMINAL_ERROR = new Error("Terminated");
-    
     constructor(
         private mActual: rs.Subscriber<R>,
         private mMapper: (t: T) => rs.Publisher<R>,
@@ -246,7 +244,7 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
     
     addError(t: Error) {
         var ex = this.error;
-        if (ex != FlatMapSubscriber.TERMINAL_ERROR) {
+        if (ex != sp.SH.TERMINAL_ERROR) {
             if (ex == null) {
                 this.error = t;
             } else {
@@ -359,7 +357,7 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
 
                     if (!this.mDelayError && this.error != null) {
                         const ex = this.error;
-                        this.error = FlatMapSubscriber.TERMINAL_ERROR;
+                        this.error = sp.SH.TERMINAL_ERROR;
                         this.s.cancel();
                         this.cleanup();
                         a.onError(ex);
@@ -401,7 +399,7 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
                                         this.s.cancel();
                                         this.cleanup();
                                         ex = this.error;
-                                        this.error = FlatMapSubscriber.TERMINAL_ERROR;
+                                        this.error = sp.SH.TERMINAL_ERROR;
                                         a.onError(ex);
                                         return;
                                     } else {
@@ -495,7 +493,7 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
         if (this.mDelayError) {
             if (d && empty) {
                 const ex = this.error;
-                this.error = FlatMapSubscriber.TERMINAL_ERROR;
+                this.error = sp.SH.TERMINAL_ERROR;
                 if (ex != null) {
                     this.mActual.onError(ex);
                 } else {
@@ -507,7 +505,7 @@ export class FlatMapSubscriber<T, R> implements rs.Subscriber<T>, rs.Subscriptio
             if (d) {
                 const ex = this.error;
                 if (ex != null) {
-                    this.error = FlatMapSubscriber.TERMINAL_ERROR;
+                    this.error = sp.SH.TERMINAL_ERROR;
                     this.s.cancel();
                     this.cleanup();
                     this.mActual.onError(ex);
