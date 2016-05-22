@@ -15,6 +15,7 @@ import * as zip from './flux-zip';
 import * as collect from './flux-collect';
 import * as combine from './flux-combine';
 import * as lcy from './flux-lifecycle';
+import * as err from './flux-error';
 
 /** A publisher with operators to work with reactive streams of 0 to N elements optionally followed by an error or completion. */
 export abstract class Flux<T> implements rs.Publisher<T> {
@@ -292,7 +293,14 @@ export abstract class Flux<T> implements rs.Publisher<T> {
             n => { },
             onCancel 
         );
-
+    }
+    
+    onErrorReturn(value: T) : Flux<T> {
+        return new FluxOnErrorReturn<T>(this, value);        
+    }
+    
+    onErrorResumeNext(errorMapper: (t: Error) => rs.Publisher<T>) : Flux<T> {
+        return new FluxOnErrorResumeNext<T>(this, errorMapper);
     }
     
     // ------------------------------------
@@ -976,4 +984,24 @@ class FluxDoOnLifecycle<T> extends Flux<T> {
                 this.onCancel
         ));       
     }
+}
+
+class FluxOnErrorReturn<T> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>, private value: T) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        this.source.subscribe(new err.OnErrorReturnSubscriber<T>(s, this.value));
+    }    
+}
+
+class FluxOnErrorResumeNext<T> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>, private errorMapper: (t: Error) => rs.Publisher<T>) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        this.source.subscribe(new err.OnErrorResumeSubscriber<T>(s, this.errorMapper));
+    }    
 }
