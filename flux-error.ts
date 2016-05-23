@@ -80,6 +80,12 @@ export class OnErrorResumeSubscriber<T> implements rs.Subscriber<T>, rs.Subscrip
         }
     }
     
+    subscribeSecond(s: rs.Subscription) : void {
+        if (sp.SH.validSubscription(this.s, s)) {
+            this.s = s;
+        }        
+    }
+    
     onNext(t: T) : void {
         const p = this.requested;
         if (p != Infinity) {
@@ -136,7 +142,7 @@ class OnErrorResumeSecondSubscriber<T> implements rs.Subscriber<T> {
     }
     
     onSubscribe(s: rs.Subscription) : void {
-        this.parent.onSubscribe(s);
+        this.parent.subscribeSecond(s);
         s.request(this.parent.currentRequested());
     }
     
