@@ -20,6 +20,8 @@ Import `flux` package.
 
 ## Reactive Entry points
 
+### Flux
+
   - `combineLatest`, `combineLatest2`, `combineLatest3`, `combineLatest4`
   - `concat`
   - `concatArray`
@@ -33,16 +35,24 @@ Import `flux` package.
   - `mergeArray`
   - `never`
   - `range`
+  - `switchOnNext`
   - `timer`
   - `zip`, `zip2`, `zip3`, `zip4`
 
+### Mono
+
+  - TBD
+
 ## Reactive stay
+
+### Flux
 
   - `as`
   - `collect`
   - `combineWith`
   - `compose`
   - `concatWith`
+  - `debounce`
   - `doOnAfterNext`
   - `doOnAfterTerminated`
   - `doOnCancel`
@@ -58,15 +68,35 @@ Import `flux` package.
   - `onErrorReturn`
   - `onErrorResumeNext`
   - `reduce`
+  - `sample`
+  - `skip`
+  - `skipLast`
+  - `skipUntil`
+  - `switchMap`
   - `take`
+  - `takeLast`
+  - `takeUntil`
+  - `throttleFirst`
   - `toArray`
   - `withLatestFrom`
   - `zipWith`
 
+### Mono
+
+  - TBD
+
 ## Reactive Leave
+
+### Flux
 
   - `consume`
   - `subscribe`
+
+### Mono
+
+  - `consume`
+  - `subscribe`
+
 
 ## Scheduler
 

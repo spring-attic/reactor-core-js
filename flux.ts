@@ -344,6 +344,13 @@ export abstract class Flux<T> implements rs.Publisher<T> {
         return new FluxSkipUntil(this, other);
     }
     
+    skip(n: number) : Flux<T> {
+        if (n == 0) {
+            return this;
+        }
+        return new FluxSkip(this, n);
+    }
+    
     // ------------------------------------
     
     consume(onNext : (t: T) => void, onError? : (t : Error) => void, onComplete? : () => void) : flow.Cancellation {
