@@ -300,7 +300,8 @@ export class SH {
         return true;
     }
     
-    /** Verify that the current Subscription is null and the new Subscription is not null. */
+    /** Verify that the current Subscription is null and the new Subscription is not null, otherwise
+     * cancel the incoming subscription and throw an error. */
     static validSubscription(current: rs.Subscription, s: rs.Subscription) : boolean {
         if (s == null) {
             throw new Error("s is null");

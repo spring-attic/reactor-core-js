@@ -16,6 +16,8 @@ import * as collect from './flux-collect';
 import * as combine from './flux-combine';
 import * as lcy from './flux-lifecycle';
 import * as err from './flux-error';
+import { SwitchMapSubscriber } from './flux-switchmap';
+import { DebounceSubscriber } from './flux-debounce';
 
 /** A publisher with operators to work with reactive streams of 0 to N elements optionally followed by an error or completion. */
 export abstract class Flux<T> implements rs.Publisher<T> {
@@ -301,6 +303,14 @@ export abstract class Flux<T> implements rs.Publisher<T> {
     
     onErrorResumeNext(errorMapper: (t: Error) => rs.Publisher<T>) : Flux<T> {
         return new FluxOnErrorResumeNext<T>(this, errorMapper);
+    }
+    
+    switchMap<R>(mapper: (t: T) => rs.Publisher<R>, prefetch?: number) : Flux<R> {
+        return new FluxSwitchMap<T, R>(this, mapper, prefetch === undefined ? Flux.BUFFER_SIZE : prefetch);
+    }
+    
+    debounce(timeout: number, scheduler?: sch.TimedScheduler) : Flux<T> {
+        return new FluxDebounceTime(this, timeout, scheduler === undefined ? sch.DefaultScheduler.INSTANCE : scheduler);
     }
     
     // ------------------------------------
@@ -1004,4 +1014,24 @@ class FluxOnErrorResumeNext<T> extends Flux<T> {
     subscribe(s: rs.Subscriber<T>) : void {
         this.source.subscribe(new err.OnErrorResumeSubscriber<T>(s, this.errorMapper));
     }    
+}
+
+class FluxSwitchMap<T, R> extends Flux<R> {
+    constructor(private source: rs.Publisher<T>, private mapper: (t: T) => rs.Publisher<R>, private prefetch: number) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<R>) : void {
+        this.source.subscribe(new SwitchMapSubscriber(s, this.mapper, this.prefetch));
+    }
+}
+
+class FluxDebounceTime<T> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>, private timeout: number, private scheduler: sch.TimedScheduler) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        this.source.subscribe(new DebounceSubscriber(s, this.timeout, this.scheduler.createWorker()));
+    }
 }
