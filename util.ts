@@ -147,3 +147,88 @@ export class SpscLinkedArrayQueue<T> implements flow.Queue<T> {
         while (this.poll() != null);
     }
 }
+
+/** A fixed size buffer that overwrites old entries. */
+export class RingBuffer<T> {
+    private array: Array<T>;
+    private producerIndex: number = 0;
+    private consumerIndex: number = 0;
+    
+    constructor(capacity: number) {
+        this.array = new Array<T>(capacity);
+        this.array.fill(null);
+    }    
+    
+    offer(t: T) : void {
+        const a = this.array;
+        
+        var pi = this.producerIndex;
+        a[pi++] = t;
+        
+        if (pi == a.length) {
+            this.producerIndex = 0;
+        } else {
+            this.producerIndex = pi;
+        }
+        var ci = this.consumerIndex;
+        if (pi == ci) {
+            ci++;
+            if (ci == a.length) {
+                this.consumerIndex = 0;
+            } else {
+                this.consumerIndex = ci;
+            }
+        }
+    }
+    
+    poll() : T {
+        const a = this.array;
+        var ci = this.consumerIndex;
+        
+        const v = a[ci];
+        if (v != null) {
+            a[ci] = null;
+            ci++;
+            if (ci == a.length) {
+                this.consumerIndex = 0;
+            } else {
+                this.consumerIndex = ci;
+            }
+        }
+        return v;
+    }
+    
+    isEmpty() : boolean {
+        return this.array[this.consumerIndex] == null;
+    }
+    
+    clear() : void {
+        this.array.fill(null);
+        this.consumerIndex = 0;
+        this.producerIndex = 0;
+    }
+    
+    size() : number {
+        if (this.isEmpty()) {
+            return 0;
+        }
+        const pi = this.producerIndex;
+        const ci = this.consumerIndex;
+        if (ci == pi) {
+            return this.array.length;
+        } else
+        if (pi > ci) {
+            return pi - ci;
+        }
+        return this.array.length - ci + pi;
+    }
+    
+    isFull() : boolean {
+        const pi = this.producerIndex;
+        const ci = this.consumerIndex;
+        if (ci == pi) {
+            return this.array[ci] != null;
+        }
+        return false;
+    }
+}

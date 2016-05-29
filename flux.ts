@@ -17,7 +17,7 @@ import * as combine from './flux-combine';
 import * as lcy from './flux-lifecycle';
 import * as err from './flux-error';
 import { SwitchMapSubscriber } from './flux-switchmap';
-import { DebounceSubscriber } from './flux-debounce';
+import { DebounceTimedSubscriber, SampleTimedSubscriber, ThrottleFirstTimedSubscriber } from './flux-debounce';
 
 /** A publisher with operators to work with reactive streams of 0 to N elements optionally followed by an error or completion. */
 export abstract class Flux<T> implements rs.Publisher<T> {
@@ -126,6 +126,10 @@ export abstract class Flux<T> implements rs.Publisher<T> {
 
     static combineLatest4<T1, T2, T3, T4, R>(p1: rs.Publisher<T1>, p2: rs.Publisher<T2>, p3: rs.Publisher<T3>, p4: rs.Publisher<T4>, combiner: (t1: T1, t2: T2, t3: T3, t4: T4) => R, prefetch?: number) : Flux<R> {
         return Flux.combineLatest([p1, p2, p3, p4], a => combiner(a[0] as T1, a[1] as T2, a[2] as T3, a[3] as T4), prefetch);        
+    }
+    
+    static switchOnNext<T>(sources: rs.Publisher<rs.Publisher<T>>, prefetch?: number) : Flux<T> {
+        return new FluxSwitchMap(sources, v => v, prefetch);
     }
     
     // ------------------------------------
@@ -312,9 +316,67 @@ export abstract class Flux<T> implements rs.Publisher<T> {
     debounce(timeout: number, scheduler?: sch.TimedScheduler) : Flux<T> {
         return new FluxDebounceTime(this, timeout, scheduler === undefined ? sch.DefaultScheduler.INSTANCE : scheduler);
     }
+
+    sample(timeout: number, scheduler?: sch.TimedScheduler) : Flux<T> {
+        return new FluxSampleTime(this, timeout, scheduler === undefined ? sch.DefaultScheduler.INSTANCE : scheduler);
+    }
+    
+    throttleFirst(timeout: number, scheduler?: sch.TimedScheduler) : Flux<T> {
+        return new FluxThrottleFirstTime(this, timeout, scheduler === undefined ? sch.DefaultScheduler.INSTANCE : scheduler);
+    }
+    
+    takeLast(n: number) : Flux<T> {
+        if (n == 1) {
+            return new FluxTakeLastOne(this);
+        }
+        return new FluxTakeLast(this, n);
+    }
+    
+    skipLast(n: number) : Flux<T> {
+        return new FluxSkipLast(this, n);
+    }
+    
+    takeUntil<U>(other: rs.Publisher<U>) : Flux<T> {
+        return new FluxTakeUntil(this, other);
+    }
+    
+    skipUntil<U>(other: rs.Publisher<U>) : Flux<T> {
+        return new FluxSkipUntil(this, other);
+    }
     
     // ------------------------------------
     
+    consume(onNext : (t: T) => void, onError? : (t : Error) => void, onComplete? : () => void) : flow.Cancellation {
+        const cs = new subscriber.CallbackSubscriber(
+            onNext, 
+            onError === undefined ? (t: Error) : void => { console.log(t); } : onError,
+            onComplete === undefined ? () : void => { } : onComplete);
+        this.subscribe(cs);
+        return cs;
+    }
+
+}
+
+// due to cross-dependency with Flux, this has to be in the same file until JS/TS sorts it out. 
+
+/** Base class and fluent API entry point for 0..1 element publishers. */
+export abstract class Mono<T> implements rs.Publisher<T> {
+
+    /** Subscribe to this Mono and receive onNext+onComplete, onComplete or onError. */    
+    abstract subscribe(s: rs.Subscriber<T>) : void;
+    
+    // -----------------------------------------------------
+    // static factory methods
+    // -----------------------------------------------------
+
+    // -----------------------------------------------------
+    // instance methods
+    // -----------------------------------------------------
+
+    // -----------------------------------------------------
+    // leave methods
+    // -----------------------------------------------------
+
     consume(onNext : (t: T) => void, onError? : (t : Error) => void, onComplete? : () => void) : flow.Cancellation {
         const cs = new subscriber.CallbackSubscriber(
             onNext, 
@@ -1032,6 +1094,81 @@ class FluxDebounceTime<T> extends Flux<T> {
     }
     
     subscribe(s: rs.Subscriber<T>) : void {
-        this.source.subscribe(new DebounceSubscriber(s, this.timeout, this.scheduler.createWorker()));
+        this.source.subscribe(new DebounceTimedSubscriber(s, this.timeout, this.scheduler.createWorker()));
+    }
+}
+
+class FluxSampleTime<T> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>, private timeout: number, private scheduler: sch.TimedScheduler) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        this.source.subscribe(new SampleTimedSubscriber(s, this.timeout, this.scheduler));
+    }
+}
+
+class FluxThrottleFirstTime<T> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>, private timeout: number, private scheduler: sch.TimedScheduler) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        this.source.subscribe(new ThrottleFirstTimedSubscriber(s, this.timeout, this.scheduler.createWorker()));
+    }
+}
+
+class FluxTakeLast<T> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>, private n: number) {
+        super();
+    }
+    subscribe(s: rs.Subscriber<T>) : void {
+        this.source.subscribe(new take.TakeLastSubscriber(s, this.n));
+    }    
+}
+
+class FluxTakeLastOne<T> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>) {
+        super();
+    }
+    subscribe(s: rs.Subscriber<T>) : void {
+        this.source.subscribe(new take.TakeLastOneSubscriber(s));
+    }    
+}
+
+class FluxSkipLast<T> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>, private n: number) {
+        super();
+    }
+    subscribe(s: rs.Subscriber<T>) : void {
+        this.source.subscribe(new take.SkipLastSubscriber(s, this.n));
+    }    
+}
+
+class FluxTakeUntil<T, U> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>, private other: rs.Publisher<U>) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        const main = new take.TakeUntilMainSubscriber(s);
+        
+        this.other.subscribe(main.getOther());
+        
+        this.source.subscribe(main);
+    }
+}
+
+class FluxSkipUntil<T, U> extends Flux<T> {
+    constructor(private source: rs.Publisher<T>, private other: rs.Publisher<U>) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        const main = new take.SkipUntilMainSubscriber(s);
+        
+        this.other.subscribe(main.getOther());
+        
+        this.source.subscribe(main);
     }
 }
