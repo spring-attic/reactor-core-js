@@ -27,7 +27,8 @@ Flux.range(1, 10)
 ## Reactive Entry points
 
 ### Flux
-
+  
+  - `amb`
   - `combineLatest`, `combineLatest2`, `combineLatest3`, `combineLatest4`
   - `concat`
   - `concatArray`
@@ -43,6 +44,7 @@ Flux.range(1, 10)
   - `range`
   - `switchOnNext`
   - `timer`
+  - `using`
   - `zip`, `zip2`, `zip3`, `zip4`
 
 ### Mono
@@ -68,6 +70,7 @@ Flux.range(1, 10)
   - `doOnSubscribe`
   - `filter`
   - `flatMap`
+  - `generate`
   - `hide`
   - `lift`
   - `map`

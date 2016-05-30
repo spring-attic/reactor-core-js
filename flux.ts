@@ -20,6 +20,7 @@ import { SwitchMapSubscriber } from './flux-switchmap';
 import { DebounceTimedSubscriber, SampleTimedSubscriber, ThrottleFirstTimedSubscriber } from './flux-debounce';
 import { AmbCoordinator } from './flux-amb';
 import { GenerateSubscription } from './flux-generate';
+import { UsingSubscriber } from './flux-using';
 
 /** A publisher with operators to work with reactive streams of 0 to N elements optionally followed by an error or completion. */
 export abstract class Flux<T> implements rs.Publisher<T> {
@@ -136,6 +137,19 @@ export abstract class Flux<T> implements rs.Publisher<T> {
     
     static amb<T>(sources: Array<rs.Publisher<T>>) : Flux<T> {
         return new FluxAmb(sources);
+    }
+    
+    static generate<T, S>(stateFactory: () => S, 
+            generator: (state: S, out: rs.Subscriber<T>) => S, 
+            stateDisposer?: (state: S) => void) : Flux<T> {
+        return new FluxGenerate(stateFactory, generator, stateDisposer === undefined ? s => { } : stateDisposer);
+    }
+    
+    static using<T, R>(resourceFactory: () => R,
+            publisherFactory: (resource: R) => rs.Publisher<T>,
+            resourceDisposer?: (resource: R) => void, eager?: boolean
+    ) : Flux<T> {
+        return new FluxUsing(resourceFactory, publisherFactory, resourceDisposer === undefined ? s => { } : resourceDisposer, eager === undefined ? true : eager);
     }
     
     // ------------------------------------
@@ -1222,4 +1236,16 @@ class FluxGenerate<T, S> extends Flux<T> {
         
         s.onSubscribe(new GenerateSubscription(s, state, this.generator, this.stateDisposer));       
     }
+}
+
+class FluxUsing<T, R> extends Flux<T> {
+    constructor(private resourceFactory: () => R,
+            private publisherFactory: (resource: R) => rs.Publisher<T>,
+            private resourceDisposer: (resource: R) => void, private eager: boolean) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        UsingSubscriber.subscribe(s, this.resourceFactory, this.publisherFactory, this.resourceDisposer, this.eager);
+    }   
 }

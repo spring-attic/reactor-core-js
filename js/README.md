@@ -21,7 +21,8 @@ Import `flux` package.
 ## Reactive Entry points
 
 ### Flux
-
+  
+  - `amb`
   - `combineLatest`, `combineLatest2`, `combineLatest3`, `combineLatest4`
   - `concat`
   - `concatArray`
@@ -37,6 +38,7 @@ Import `flux` package.
   - `range`
   - `switchOnNext`
   - `timer`
+  - `using`
   - `zip`, `zip2`, `zip3`, `zip4`
 
 ### Mono
@@ -62,6 +64,7 @@ Import `flux` package.
   - `doOnSubscribe`
   - `filter`
   - `flatMap`
+  - `generate`
   - `hide`
   - `lift`
   - `map`
