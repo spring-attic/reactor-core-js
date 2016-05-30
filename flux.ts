@@ -18,6 +18,8 @@ import * as lcy from './flux-lifecycle';
 import * as err from './flux-error';
 import { SwitchMapSubscriber } from './flux-switchmap';
 import { DebounceTimedSubscriber, SampleTimedSubscriber, ThrottleFirstTimedSubscriber } from './flux-debounce';
+import { AmbCoordinator } from './flux-amb';
+import { GenerateSubscription } from './flux-generate';
 
 /** A publisher with operators to work with reactive streams of 0 to N elements optionally followed by an error or completion. */
 export abstract class Flux<T> implements rs.Publisher<T> {
@@ -130,6 +132,10 @@ export abstract class Flux<T> implements rs.Publisher<T> {
     
     static switchOnNext<T>(sources: rs.Publisher<rs.Publisher<T>>, prefetch?: number) : Flux<T> {
         return new FluxSwitchMap(sources, v => v, prefetch);
+    }
+    
+    static amb<T>(sources: Array<rs.Publisher<T>>) : Flux<T> {
+        return new FluxAmb(sources);
     }
     
     // ------------------------------------
@@ -1177,5 +1183,43 @@ class FluxSkipUntil<T, U> extends Flux<T> {
         this.other.subscribe(main.getOther());
         
         this.source.subscribe(main);
+    }
+}
+
+class FluxAmb<T> extends Flux<T> {
+    constructor(private sources: Array<rs.Publisher<T>>) {
+        super();
+    }
+    
+    subscribe(s: rs.Subscriber<T>) : void {
+        const n = this.sources.length;
+        const c = new AmbCoordinator(s, n);
+        
+        s.onSubscribe(c);
+        
+        c.subscribe(this.sources, n);       
+    }
+}
+
+class FluxGenerate<T, S> extends Flux<T> {
+
+    constructor(
+            private stateFactory: () => S, 
+            private generator: (state: S, out: rs.Subscriber<T>) => S, 
+            private stateDisposer: (state: S) => void) {
+        super();
+    }
+
+    subscribe(s: rs.Subscriber<T>) : void {
+        var state;
+        
+        try {
+            state = this.stateFactory();
+        } catch (ex) {
+            sp.EmptySubscription.error(s, ex);
+            return;
+        }
+        
+        s.onSubscribe(new GenerateSubscription(s, state, this.generator, this.stateDisposer));       
     }
 }
