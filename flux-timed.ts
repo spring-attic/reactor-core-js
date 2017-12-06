@@ -29,7 +29,7 @@ export class TimedSubscription implements rs.Subscription {
         }
     }
     
-    public run() : void {
+    public run = () : void => {
         if (this.mRequested) {
             this.actual.onNext(0);
             if (this.mFuture != flow.CancelledCancellation.INSTANCE) {
@@ -80,7 +80,7 @@ export class PeriodicTimedSubscription implements rs.Subscription {
         }
     }
     
-    public run() : void {
+    public run = () : void => {
         if (this.mRequested-- > 0) {
             this.actual.onNext(this.mCount++);
             if (this.mFuture != flow.CancelledCancellation.INSTANCE) {

@@ -307,7 +307,20 @@ export abstract class Flux<T> implements rs.Publisher<T> {
             () => { } 
         );
     }
-    
+
+    doOnRequest(onRequest: (n: number) => void) : Flux<T> {
+        return new FluxDoOnLifecycle<T>(this,
+            s => { },
+            v => { },
+            v => { },
+            e => { },
+            () => { },
+            () => { },
+            onRequest,
+            () => { }
+        );
+    }
+
     doOnCancel(onCancel: () => void) : Flux<T> {
         return new FluxDoOnLifecycle<T>(this,
             s => { },

@@ -163,9 +163,7 @@ export class DeferrendScalarSubscription<T> implements flow.QueueSubscription<T>
                 this.mState = DeferredState.HAS_REQUEST_HAS_VALUE;
                 
                 this.mActual.onNext(t);
-                if (this.mState != DeferredState.CANCELLED) {
-                    this.mActual.onComplete();
-                }
+                this.mActual.onComplete();
             } else
             if (s == DeferredState.NO_REQUEST_NO_VALUE) {
                 this.mValue = t;
@@ -178,12 +176,11 @@ export class DeferrendScalarSubscription<T> implements flow.QueueSubscription<T>
         if (SH.validRequest(n)) {
             const s = this.mState;
             if (s == DeferredState.NO_REQUEST_HAS_VALUE) {
+
                 this.mState = DeferredState.HAS_REQUEST_HAS_VALUE;
 
                 this.mActual.onNext(this.mValue);
-                if (this.mState != DeferredState.CANCELLED) {
-                    this.mActual.onComplete();
-                }
+                this.mActual.onComplete();
             } else
             if (s == DeferredState.NO_REQUEST_NO_VALUE) {
                 this.mState = DeferredState.HAS_REQUEST_NO_VALUE;

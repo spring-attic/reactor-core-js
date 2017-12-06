@@ -208,7 +208,7 @@ export class TestSubscriber<T> implements rs.Subscriber<T>, rs.Subscription {
     }
     
     assertNotComplete() : void {
-        if (this.completions == 0) {
+        if (this.completions != 0) {
             this.error("No completion expected");
         }
     }
