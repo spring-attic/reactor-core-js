@@ -1,16 +1,6 @@
-[![Join the chat at https://gitter.im/reactor/reactor](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/reactor/reactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![NPM version](https://img.shields.io/npm/v/reactor-core-js.svg)](https://www.npmjs.com/package/reactor-core-js)
+# Reactor-Core-JS
 
-# reactor-core-js
-
-The Reactive-Streams based implementation of Reactor-Core.
-
-# Importing
-
-```
-npm install reactor-core-js
-```
-
-[NPM](https://www.npmjs.com/package/reactor-core-js/)
+The Reactive-Streams based implementation of Reactor-Core
 
 # Usage
 
@@ -23,6 +13,10 @@ Flux.range(1, 10)
 .flatMap(v => Flux.range(v, 2))
 .consume(v => console.log(v));
 ```
+
+# Operator support
+
+Import `flux` package.
 
 ## Reactive Entry points
 
