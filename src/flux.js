@@ -72,7 +72,16 @@ export class Flux<T> implements Publisher<T> {
     return Flux.bufferSize;
   }
 
-  subscribe(s: Subscriber<T>) {}
+  subscribe(s: Subscriber<T>) {
+    throw new Error('subscribe method not implemented!');
+  }
+
+  static from(source: Publisher<T>): Flux<T> {
+    if (source instanceof Flux) {
+      return source;
+    }
+    return new FluxSource(source);
+  }
 
   static range(start: number, count: number): Flux<number> {
     if (count === 0) {
@@ -937,6 +946,19 @@ export class UnicastProcessor<T> extends Flux<T>
 }
 
 // ----------------------------------------------------------------------
+
+class FluxSource<T> extends Flux<T> {
+  _source: Publisher<T>;
+
+  constructor(source: Publisher<T>) {
+      super();
+      this._source = source;
+  }
+
+  subscribe(s: Subscriber<T>) {
+      this._source.subscribe(s);
+  }
+}
 
 class FluxRange extends Flux<number> implements Fuseable {
   _start: number;
