@@ -112,7 +112,7 @@ export class TestSubscriber<T> implements Subscriber<T>, Subscription {
   _errors: Array<Error>;
 
   constructor(initialRequest?: number) {
-    if (initialRequest === undefined) {
+    if (initialRequest == null) {
       this._requested = 0;
     } else {
       this._requested = initialRequest;

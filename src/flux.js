@@ -122,7 +122,7 @@ export class Flux<T> implements Publisher<T> {
   static timer(delay: number, scheduler?: TimedScheduler): Flux<number> {
     return new FluxTimer(
       delay,
-      scheduler === undefined ? DefaultScheduler.INSTANCE : scheduler,
+      scheduler == null ? DefaultScheduler.INSTANCE : scheduler,
     );
   }
 
@@ -134,7 +134,7 @@ export class Flux<T> implements Publisher<T> {
     return new FluxInterval(
       initialDelay,
       period,
-      scheduler === undefined ? DefaultScheduler.INSTANCE : scheduler,
+      scheduler == null ? DefaultScheduler.INSTANCE : scheduler,
     );
   }
 
@@ -146,7 +146,7 @@ export class Flux<T> implements Publisher<T> {
     return new FluxZip(
       sources,
       zipper,
-      prefetch === undefined ? Flux.BUFFER_SIZE : prefetch,
+      prefetch == null ? Flux.BUFFER_SIZE : prefetch,
     );
   }
 
@@ -192,9 +192,9 @@ export class Flux<T> implements Publisher<T> {
     return new FluxFlatMap(
       sources,
       v => v,
-      delayError === undefined ? false : delayError,
-      maxConcurrency === undefined ? Infinity : maxConcurrency,
-      prefetch === undefined ? Flux.BUFFER_SIZE : prefetch,
+      delayError == null ? false : delayError,
+      maxConcurrency == null ? Infinity : maxConcurrency,
+      prefetch == null ? Flux.BUFFER_SIZE : prefetch,
     );
   }
 
@@ -207,9 +207,9 @@ export class Flux<T> implements Publisher<T> {
     return new FluxFlatMap(
       Flux.fromArray(sources),
       v => v,
-      delayError === undefined ? false : delayError,
-      maxConcurrency === undefined ? Infinity : maxConcurrency,
-      prefetch === undefined ? Flux.BUFFER_SIZE : prefetch,
+      delayError == null ? false : delayError,
+      maxConcurrency == null ? Infinity : maxConcurrency,
+      prefetch == null ? Flux.BUFFER_SIZE : prefetch,
     );
   }
 
@@ -222,8 +222,8 @@ export class Flux<T> implements Publisher<T> {
     return new FluxConcatMap(
       sources,
       v => v,
-      delayError === undefined ? false : delayError,
-      prefetch === undefined ? Flux.BUFFER_SIZE : prefetch,
+      delayError == null ? false : delayError,
+      prefetch == null ? Flux.BUFFER_SIZE : prefetch,
     );
   }
 
@@ -236,8 +236,8 @@ export class Flux<T> implements Publisher<T> {
     return new FluxConcatMap(
       Flux.fromArray(sources),
       v => v,
-      delayError === undefined ? false : delayError,
-      prefetch === undefined ? Flux.BUFFER_SIZE : prefetch,
+      delayError == null ? false : delayError,
+      prefetch == null ? Flux.BUFFER_SIZE : prefetch,
     );
   }
 
@@ -249,7 +249,7 @@ export class Flux<T> implements Publisher<T> {
     return new FluxCombineLatest(
       sources,
       combiner,
-      prefetch === undefined ? Flux.BUFFER_SIZE : prefetch,
+      prefetch == null ? Flux.BUFFER_SIZE : prefetch,
     );
   }
 
@@ -302,7 +302,7 @@ export class Flux<T> implements Publisher<T> {
     return new FluxSwitchMap(
       sources,
       v => v,
-      prefetch === undefined ? Flux.BUFFER_SIZE : prefetch,
+      prefetch == null ? Flux.BUFFER_SIZE : prefetch,
     );
   }
 
@@ -318,7 +318,7 @@ export class Flux<T> implements Publisher<T> {
     return new FluxGenerate(
       stateFactory,
       generator,
-      stateDisposer === undefined ? s => {} : stateDisposer,
+      stateDisposer == null ? s => {} : stateDisposer,
     );
   }
 
@@ -331,8 +331,8 @@ export class Flux<T> implements Publisher<T> {
     return new FluxUsing(
       resourceFactory,
       publisherFactory,
-      resourceDisposer === undefined ? s => {} : resourceDisposer,
-      eager === undefined ? true : eager,
+      resourceDisposer == null ? s => {} : resourceDisposer,
+      eager == null ? true : eager,
     );
   }
 
@@ -371,9 +371,9 @@ export class Flux<T> implements Publisher<T> {
     return new FluxFlatMap(
       this,
       mapper,
-      delayError === undefined ? false : delayError,
-      maxConcurrency === undefined ? Infinity : maxConcurrency,
-      prefetch === undefined ? Flux.BUFFER_SIZE : prefetch,
+      delayError == null ? false : delayError,
+      maxConcurrency == null ? Infinity : maxConcurrency,
+      prefetch == null ? Flux.BUFFER_SIZE : prefetch,
     );
   }
 
@@ -389,8 +389,8 @@ export class Flux<T> implements Publisher<T> {
     return new FluxConcatMap(
       this,
       mapper,
-      delayError === undefined ? false : delayError,
-      prefetch === undefined ? 2 : prefetch,
+      delayError == null ? false : delayError,
+      prefetch == null ? 2 : prefetch,
     );
   }
 
@@ -565,7 +565,7 @@ export class Flux<T> implements Publisher<T> {
     return new FluxSwitchMap(
       this,
       mapper,
-      prefetch === undefined ? Flux.BUFFER_SIZE : prefetch,
+      prefetch == null ? Flux.BUFFER_SIZE : prefetch,
     );
   }
 
@@ -573,7 +573,7 @@ export class Flux<T> implements Publisher<T> {
     return new FluxDebounceTime(
       this,
       timeout,
-      scheduler === undefined ? DefaultScheduler.INSTANCE : scheduler,
+      scheduler == null ? DefaultScheduler.INSTANCE : scheduler,
     );
   }
 
@@ -581,7 +581,7 @@ export class Flux<T> implements Publisher<T> {
     return new FluxSampleTime(
       this,
       timeout,
-      scheduler === undefined ? DefaultScheduler.INSTANCE : scheduler,
+      scheduler == null ? DefaultScheduler.INSTANCE : scheduler,
     );
   }
 
@@ -589,7 +589,7 @@ export class Flux<T> implements Publisher<T> {
     return new FluxThrottleFirstTime(
       this,
       timeout,
-      scheduler === undefined ? DefaultScheduler.INSTANCE : scheduler,
+      scheduler == null ? DefaultScheduler.INSTANCE : scheduler,
     );
   }
 
@@ -622,18 +622,14 @@ export class Flux<T> implements Publisher<T> {
   // ------------------------------------
 
   consume(
-    onNext: (t: T) => void,
+    onNext?: (t: T) => void,
     onError?: (t: Error) => void,
     onComplete?: () => void,
   ): Cancellation {
     const cs = new CallbackSubscriber(
-      onNext,
-      onError === undefined
-        ? (t: Error): void => {
-            console.log(t);
-          }
-        : onError,
-      onComplete === undefined ? (): void => {} : onComplete,
+      onNext == null ? (t: T): void => {} : onNext,
+      onError == null ? (t: Error): void => {} : onError,
+      onComplete == null ? (): void => {} : onComplete,
     );
     this.subscribe(cs);
     return cs;
@@ -665,13 +661,9 @@ export class Mono<T> implements Publisher<T> {
     onComplete?: () => void,
   ): Cancellation {
     const cs = new CallbackSubscriber(
-      onNext,
-      onError === undefined
-        ? (t: Error): void => {
-            console.log(t);
-          }
-        : onError,
-      onComplete === undefined ? (): void => {} : onComplete,
+      onNext == null ? (t: T): void => {} : onNext,
+      onError == null ? (t: Error): void => {} : onError,
+      onComplete == null ? (): void => {} : onComplete,
     );
     this.subscribe(cs);
     return cs;
@@ -801,7 +793,7 @@ export class UnicastProcessor<T> extends Flux<T>
     this._wip = 0;
     this._cancelled = false;
     this._queue = new SpscLinkedArrayQueue(
-      capacity === undefined ? Flux.BUFFER_SIZE : capacity,
+      capacity == null ? Flux.BUFFER_SIZE : capacity,
     );
   }
 
@@ -951,12 +943,12 @@ class FluxSource<T> extends Flux<T> {
   _source: Publisher<T>;
 
   constructor(source: Publisher<T>) {
-      super();
-      this._source = source;
+    super();
+    this._source = source;
   }
 
   subscribe(s: Subscriber<T>) {
-      this._source.subscribe(s);
+    this._source.subscribe(s);
   }
 }
 

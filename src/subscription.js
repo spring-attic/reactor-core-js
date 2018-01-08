@@ -142,6 +142,7 @@ export class ScalarSubscription<T> implements QueueSubscription<T> {
   }
 }
 
+/*eslint-disable */
 const DeferredState = {
   NO_REQUEST_NO_VALUE: 0,
   HAS_REQUEST_NO_VALUE: 1,
@@ -149,15 +150,18 @@ const DeferredState = {
   HAS_REQUEST_HAS_VALUE: 3,
   CANCELLED: 4,
 };
+/*eslint-enable */
 
 type DeferredStateEnum = $Values<typeof DeferredState>;
 
+/*eslint-disable */
 const FusedState = {
   NOT_FUSED: 0,
   NO_VALUE: 1,
   HAS_VALUE: 2,
   COMPLETE: 3,
 };
+/*eslint-enable */
 
 type FusedStateEnum = $Values<typeof FusedState>;
 
@@ -187,7 +191,9 @@ export class DeferrendScalarSubscription<T> implements QueueSubscription<T> {
         this._state = DeferredState.HAS_REQUEST_HAS_VALUE;
 
         this.actual.onNext(t);
-        this.actual.onComplete();
+        if (this._state !== DeferredState.CANCELLED) {
+          this.actual.onComplete();
+        }
       } else if (s === DeferredState.NO_REQUEST_NO_VALUE) {
         this._value = t;
         this._state = DeferredState.NO_REQUEST_HAS_VALUE;
@@ -202,7 +208,9 @@ export class DeferrendScalarSubscription<T> implements QueueSubscription<T> {
         this._state = DeferredState.HAS_REQUEST_HAS_VALUE;
 
         this.actual.onNext(this._value);
-        this.actual.onComplete();
+        if (this._state !== DeferredState.CANCELLED) {
+          this.actual.onComplete();
+        }
       } else if (s === DeferredState.NO_REQUEST_NO_VALUE) {
         this._state = DeferredState.HAS_REQUEST_NO_VALUE;
       }
