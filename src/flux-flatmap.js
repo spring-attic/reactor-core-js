@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017-present, Netifi Inc.
+ * Copyright (c) 2016-2018 Pivotal Software Inc, All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -582,26 +582,26 @@ export class FlatMapInnerSubscriber<T, R> implements Subscriber<R> {
       this._s = s;
 
       /* fusion seems to add significant overhead
-            
+
             const qs = s as QueueSubscription<R>;
-            
+
             if (qs.requestFusion) {
                 const mode = qs.requestFusion(FC.ANY);
-                
+
                 if (mode == FC.SYNC) {
                     this.sourceMode = mode;
                     this.queue = qs;
                     this.done = true;
-                    
+
                     this.mParent.drain();
                     return;
                 } else
                 if (mode == FC.ASYNC) {
                     this.sourceMode = mode;
                     this.queue = qs;
-                    
+
                     s.request(this.mPrefetch);
-                    
+
                     return;
                 }
             }
