@@ -111,9 +111,12 @@ export class TestSubscriber<T> implements Subscriber<T>, Subscription {
 
   _errors: Array<Error>;
 
+  _promise: Promise<void>;
+  _done: () => void;
+
   constructor(initialRequest?: number) {
     if (initialRequest == null) {
-      this._requested = 0;
+      this._requested = Infinity;
     } else {
       this._requested = initialRequest;
     }
@@ -121,11 +124,14 @@ export class TestSubscriber<T> implements Subscriber<T>, Subscription {
     this._completions = 0;
     this._values = [];
     this._errors = [];
+    this._promise = new Promise(done => {
+      this._done = done;
+    });
   }
 
   onSubscribe(s: Subscription): void {
-    if (this.s != null) {
-      if (this.s == SH.CANCELLED) {
+    if (this._s != null) {
+      if (this._s == SH.CANCELLED) {
         s.cancel();
         return;
       }
@@ -144,7 +150,7 @@ export class TestSubscriber<T> implements Subscriber<T>, Subscription {
   onNext(t: T): void {
     if (!this._subscriptionChecked) {
       this._subscriptionChecked = true;
-      if (this.s == null) {
+      if (this._s == null) {
         this._errors.push(new Error('onSubscribe not called before onNext'));
       }
     }
@@ -159,25 +165,27 @@ export class TestSubscriber<T> implements Subscriber<T>, Subscription {
       }
     }
     this._errors.push(t);
+    this._done();
   }
 
   onComplete(): void {
     if (!this._subscriptionChecked) {
       this._subscriptionChecked = true;
-      if (this.s == null) {
+      if (this._s == null) {
         this._errors.push(
           new Error('onSubscribe not called before onComplete'),
         );
       }
     }
     this._completions++;
+    this._done();
   }
 
   request(n: number): void {
     if (n <= 0) {
       this._errors.push(new Error('n > 0 required but it was ' + n));
     } else {
-      if (this.s == null) {
+      if (this._s == null) {
         this._requested += n;
       } else {
         this._s.request(n);
@@ -193,6 +201,10 @@ export class TestSubscriber<T> implements Subscriber<T>, Subscription {
         a.cancel();
       }
     }
+  }
+
+  await(): Promise<void> {
+    return this._promise;
   }
 
   error(message: string): void {
@@ -318,7 +330,7 @@ export class TestSubscriber<T> implements Subscriber<T>, Subscription {
   }
 
   assertSubscribed() {
-    if (this.s == null) {
+    if (this._s == null) {
       this.error('onSubscribe not called');
     }
   }

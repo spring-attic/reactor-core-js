@@ -1,6 +1,6 @@
 {
   "extends": [
-    "eslint-config-fb-strict",
+    "fbjs",
     "prettier",
     "prettier/flowtype"
   ],
