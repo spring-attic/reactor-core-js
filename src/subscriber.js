@@ -17,10 +17,10 @@
  */
 
 import { Subscription, Subscriber } from './reactivestreams-spec';
-import { Cancellation } from './flow';
+import { Disposable } from './flow';
 import { SH, EmptySubscription } from './subscription';
 
-export class CallbackSubscriber<T> implements Subscriber<T>, Cancellation {
+export class CallbackSubscriber<T> implements Subscriber<T>, Disposable {
   _onNext: (t: T) => void;
   _onError: (t: Error) => void;
   _onComplete: () => void;

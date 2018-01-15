@@ -19,13 +19,13 @@
 import { Subscription, Subscriber } from './reactivestreams-spec';
 import { SH } from './subscription';
 import { TimedWorker, TimedScheduler } from './scheduler';
-import { Cancellation } from './flow';
+import { Disposable } from './flow';
 
 export class DebounceTimedSubscriber<T> implements Subscriber<T>, Subscription {
   _actual: Subscriber<T>;
   _timeout: number;
   _worker: TimedWorker;
-  _timer: ?Cancellation = null;
+  _timer: ?Disposable = null;
   _s: Subscription;
   _requested: number = 0;
   _done: boolean = false;
@@ -111,7 +111,7 @@ export class SampleTimedSubscriber<T> implements Subscriber<T>, Subscription {
   _delay: number;
   _scheduler: TimedScheduler;
   _s: Subscription;
-  _timer: Cancellation;
+  _timer: Disposable;
   _value: ?T = null;
   _requested: number = 0;
 
@@ -192,7 +192,7 @@ export class ThrottleFirstTimedSubscriber<T>
   _worker: TimedWorker;
   _s: Subscription;
   _value: ?T = null;
-  _timer: ?Cancellation = null;
+  _timer: ?Disposable = null;
 
   constructor(actual: Subscriber<T>, timeout: number, worker: TimedWorker) {
     this._actual = actual;

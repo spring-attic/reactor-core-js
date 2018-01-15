@@ -33,5 +33,11 @@ describe('Flux Tests', () => {
         ts.assertNoError();
       });
     });
+
+    it('cancel', () => {
+      const x = Flux.just('test');
+      const c = x.subscribe(t => {});
+      c.dispose();
+    });
   });
 });

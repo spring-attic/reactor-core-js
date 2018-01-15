@@ -22,7 +22,7 @@ import {
   Publisher,
   Processor,
 } from './reactivestreams-spec';
-import { Cancellation, Fuseable, Callable, ScalarCallable } from './flow';
+import { Disposable, Fuseable, Callable, ScalarCallable } from './flow';
 import { FluxArraySubscription, FluxRangeSubscription } from './flux-range';
 import { FluxMapSubscriber, FluxHideSubscriber } from './flux-map';
 import {
@@ -72,7 +72,23 @@ export class Flux<T> implements Publisher<T> {
     return Flux.bufferSize;
   }
 
-  subscribe(s: Subscriber<T>) {
+  subscribe(subscriberOrNext?: Subscriber<T> | (t: T) => void,
+            onError?: (t: Error) => void,
+            onComplete?: () => void): any {
+    if (subscriberOrNext == null || typeof subscriberOrNext === 'function') {
+      const cs = new CallbackSubscriber(
+        subscriberOrNext == null ? (t: T): void => {} : subscriberOrNext,
+        onError == null ? (t: Error): void => {} : onError,
+        onComplete == null ? (): void => {} : onComplete,
+      );
+      this._subscribe(cs);
+      return cs;
+    } else {
+      this._subscribe(subscriberOrNext);
+    }
+  }
+
+  _subscribe(s: Subscriber<T>): void {
     throw new Error('subscribe method not implemented!');
   }
 
@@ -126,11 +142,9 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static interval(
-    initialDelay: number,
-    period: number,
-    scheduler?: TimedScheduler,
-  ): Flux<number> {
+  static interval(initialDelay: number,
+                  period: number,
+                  scheduler?: TimedScheduler,): Flux<number> {
     return new FluxInterval(
       initialDelay,
       period,
@@ -138,11 +152,9 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static zip<T, R>(
-    sources: Publisher<T>[],
-    zipper: (v: T[]) => R,
-    prefetch?: number,
-  ): Flux<R> {
+  static zip<T, R>(sources: Publisher<T>[],
+                   zipper: (v: T[]) => R,
+                   prefetch?: number,): Flux<R> {
     return new FluxZip(
       sources,
       zipper,
@@ -150,45 +162,37 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static zip2<T1, T2, R>(
-    p1: Publisher<T1>,
-    p2: Publisher<T2>,
-    zipper: (t: T1, u: T2) => R,
-  ): Flux<R> {
+  static zip2<T1, T2, R>(p1: Publisher<T1>,
+                         p2: Publisher<T2>,
+                         zipper: (t: T1, u: T2) => R,): Flux<R> {
     return Flux.zip(([p1, p2]: Publisher<any>[]), a =>
       zipper((a[0]: T1), (a[1]: T2)),
     );
   }
 
-  static zip3<T1, T2, T3, R>(
-    p1: Publisher<T1>,
-    p2: Publisher<T2>,
-    p3: Publisher<T3>,
-    zipper: (t: T1, u: T2, v: T3) => R,
-  ): Flux<R> {
+  static zip3<T1, T2, T3, R>(p1: Publisher<T1>,
+                             p2: Publisher<T2>,
+                             p3: Publisher<T3>,
+                             zipper: (t: T1, u: T2, v: T3) => R,): Flux<R> {
     return Flux.zip(([p1, p2, p3]: Publisher<any>[]), a =>
       zipper((a[0]: T1), (a[1]: T2), (a[2]: T3)),
     );
   }
 
-  static zip4<T1, T2, T3, T4, R>(
-    p1: Publisher<T1>,
-    p2: Publisher<T2>,
-    p3: Publisher<T3>,
-    p4: Publisher<T4>,
-    zipper: (t1: T1, t2: T2, t3: T3, t4: T4) => R,
-  ): Flux<R> {
+  static zip4<T1, T2, T3, T4, R>(p1: Publisher<T1>,
+                                 p2: Publisher<T2>,
+                                 p3: Publisher<T3>,
+                                 p4: Publisher<T4>,
+                                 zipper: (t1: T1, t2: T2, t3: T3, t4: T4) => R,): Flux<R> {
     return Flux.zip(([p1, p2, p3, p4]: Publisher<any>[]), a =>
       zipper((a[0]: T1), (a[1]: T2), (a[2]: T3), (a[3]: T4)),
     );
   }
 
-  static merge<T>(
-    sources: Publisher<Publisher<T>>,
-    delayError?: boolean,
-    maxConcurrency?: number,
-    prefetch?: number,
-  ): Flux<T> {
+  static merge<T>(sources: Publisher<Publisher<T>>,
+                  delayError?: boolean,
+                  maxConcurrency?: number,
+                  prefetch?: number,): Flux<T> {
     return new FluxFlatMap(
       sources,
       v => v,
@@ -198,12 +202,10 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static mergeArray<T>(
-    sources: Publisher<T>[],
-    delayError?: boolean,
-    maxConcurrency?: number,
-    prefetch?: number,
-  ): Flux<T> {
+  static mergeArray<T>(sources: Publisher<T>[],
+                       delayError?: boolean,
+                       maxConcurrency?: number,
+                       prefetch?: number,): Flux<T> {
     return new FluxFlatMap(
       Flux.fromArray(sources),
       v => v,
@@ -213,12 +215,10 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static concat<T>(
-    sources: Publisher<Publisher<T>>,
-    delayError?: boolean,
-    maxConcurrency?: number,
-    prefetch?: number,
-  ): Flux<T> {
+  static concat<T>(sources: Publisher<Publisher<T>>,
+                   delayError?: boolean,
+                   maxConcurrency?: number,
+                   prefetch?: number,): Flux<T> {
     return new FluxConcatMap(
       sources,
       v => v,
@@ -227,12 +227,10 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static concatArray<T>(
-    sources: Publisher<T>[],
-    delayError?: boolean,
-    maxConcurrency?: number,
-    prefetch?: number,
-  ): Flux<T> {
+  static concatArray<T>(sources: Publisher<T>[],
+                        delayError?: boolean,
+                        maxConcurrency?: number,
+                        prefetch?: number,): Flux<T> {
     return new FluxConcatMap(
       Flux.fromArray(sources),
       v => v,
@@ -241,11 +239,9 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static combineLatest<R>(
-    sources: Publisher<any>[],
-    combiner: (t: Array<any>) => R,
-    prefetch?: number,
-  ): Flux<R> {
+  static combineLatest<R>(sources: Publisher<any>[],
+                          combiner: (t: Array<any>) => R,
+                          prefetch?: number,): Flux<R> {
     return new FluxCombineLatest(
       sources,
       combiner,
@@ -253,12 +249,10 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static combineLatest2<T1, T2, R>(
-    p1: Publisher<T1>,
-    p2: Publisher<T2>,
-    combiner: (t1: T1, t2: T2) => R,
-    prefetch?: number,
-  ): Flux<R> {
+  static combineLatest2<T1, T2, R>(p1: Publisher<T1>,
+                                   p2: Publisher<T2>,
+                                   combiner: (t1: T1, t2: T2) => R,
+                                   prefetch?: number,): Flux<R> {
     return Flux.combineLatest(
       [p1, p2],
       a => combiner((a[0]: T1), (a[1]: T2)),
@@ -266,13 +260,11 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static combineLatest3<T1, T2, T3, R>(
-    p1: Publisher<T1>,
-    p2: Publisher<T2>,
-    p3: Publisher<T3>,
-    combiner: (t1: T1, t2: T2, t3: T3) => R,
-    prefetch?: number,
-  ): Flux<R> {
+  static combineLatest3<T1, T2, T3, R>(p1: Publisher<T1>,
+                                       p2: Publisher<T2>,
+                                       p3: Publisher<T3>,
+                                       combiner: (t1: T1, t2: T2, t3: T3) => R,
+                                       prefetch?: number,): Flux<R> {
     return Flux.combineLatest(
       [p1, p2, p3],
       a => combiner((a[0]: T1), (a[1]: T2), (a[2]: T3)),
@@ -280,14 +272,12 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static combineLatest4<T1, T2, T3, T4, R>(
-    p1: Publisher<T1>,
-    p2: Publisher<T2>,
-    p3: Publisher<T3>,
-    p4: Publisher<T4>,
-    combiner: (t1: T1, t2: T2, t3: T3, t4: T4) => R,
-    prefetch?: number,
-  ): Flux<R> {
+  static combineLatest4<T1, T2, T3, T4, R>(p1: Publisher<T1>,
+                                           p2: Publisher<T2>,
+                                           p3: Publisher<T3>,
+                                           p4: Publisher<T4>,
+                                           combiner: (t1: T1, t2: T2, t3: T3, t4: T4) => R,
+                                           prefetch?: number,): Flux<R> {
     return Flux.combineLatest(
       [p1, p2, p3, p4],
       a => combiner((a[0]: T1), (a[1]: T2), (a[2]: T3), (a[3]: T4)),
@@ -295,10 +285,8 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static switchOnNext<T>(
-    sources: Publisher<Publisher<T>>,
-    prefetch?: number,
-  ): Flux<T> {
+  static switchOnNext<T>(sources: Publisher<Publisher<T>>,
+                         prefetch?: number,): Flux<T> {
     return new FluxSwitchMap(
       sources,
       v => v,
@@ -310,11 +298,9 @@ export class Flux<T> implements Publisher<T> {
     return new FluxAmb(sources);
   }
 
-  static generate<T, S>(
-    stateFactory: () => S,
-    generator: (state: S, out: Subscriber<T>) => S,
-    stateDisposer?: (state: S) => void,
-  ): Flux<T> {
+  static generate<T, S>(stateFactory: () => S,
+                        generator: (state: S, out: Subscriber<T>) => S,
+                        stateDisposer?: (state: S) => void,): Flux<T> {
     return new FluxGenerate(
       stateFactory,
       generator,
@@ -322,12 +308,10 @@ export class Flux<T> implements Publisher<T> {
     );
   }
 
-  static using<T, R>(
-    resourceFactory: () => R,
-    publisherFactory: (resource: R) => Publisher<T>,
-    resourceDisposer?: (resource: R) => void,
-    eager?: boolean,
-  ): Flux<T> {
+  static using<T, R>(resourceFactory: () => R,
+                     publisherFactory: (resource: R) => Publisher<T>,
+                     resourceDisposer?: (resource: R) => void,
+                     eager?: boolean,): Flux<T> {
     return new FluxUsing(
       resourceFactory,
       publisherFactory,
@@ -362,12 +346,10 @@ export class Flux<T> implements Publisher<T> {
     return new FluxTake(this, n);
   }
 
-  flatMap<R>(
-    mapper: (t: T) => Publisher<R>,
-    delayError?: boolean,
-    maxConcurrency?: number,
-    prefetch?: number,
-  ): Flux<R> {
+  flatMap<R>(mapper: (t: T) => Publisher<R>,
+             delayError?: boolean,
+             maxConcurrency?: number,
+             prefetch?: number,): Flux<R> {
     return new FluxFlatMap(
       this,
       mapper,
@@ -381,11 +363,9 @@ export class Flux<T> implements Publisher<T> {
     return new FluxHide(this);
   }
 
-  concatMap<R>(
-    mapper: (t: T) => Publisher<R>,
-    delayError?: boolean,
-    prefetch?: number,
-  ): Flux<R> {
+  concatMap<R>(mapper: (t: T) => Publisher<R>,
+               delayError?: boolean,
+               prefetch?: number,): Flux<R> {
     return new FluxConcatMap(
       this,
       mapper,
@@ -406,10 +386,8 @@ export class Flux<T> implements Publisher<T> {
     return Flux.zip2(this, other, zipper);
   }
 
-  collect<U>(
-    collectionFactory: () => U,
-    collector: (u: U, t: T) => void,
-  ): Flux<U> {
+  collect<U>(collectionFactory: () => U,
+             collector: (u: U, t: T) => void,): Flux<U> {
     return new FluxCollect(this, collectionFactory, collector);
   }
 
@@ -426,18 +404,14 @@ export class Flux<T> implements Publisher<T> {
     return new FluxReduce(this, initialFactory, reducer);
   }
 
-  withLatestFrom<U, R>(
-    other: Publisher<U>,
-    combiner: (t: T, u: U) => R,
-  ): Flux<R> {
+  withLatestFrom<U, R>(other: Publisher<U>,
+                       combiner: (t: T, u: U) => R,): Flux<R> {
     return new FluxWithLatestFrom(this, other, combiner);
   }
 
-  combineWith<U, R>(
-    other: Publisher<U>,
-    combiner: (t: T, u: U) => R,
-    prefetch?: number,
-  ): Flux<R> {
+  combineWith<U, R>(other: Publisher<U>,
+                    combiner: (t: T, u: U) => R,
+                    prefetch?: number,): Flux<R> {
     return Flux.combineLatest2(this, other, combiner, prefetch);
   }
 
@@ -618,56 +592,6 @@ export class Flux<T> implements Publisher<T> {
     }
     return new FluxSkip(this, n);
   }
-
-  // ------------------------------------
-
-  consume(
-    onNext?: (t: T) => void,
-    onError?: (t: Error) => void,
-    onComplete?: () => void,
-  ): Cancellation {
-    const cs = new CallbackSubscriber(
-      onNext == null ? (t: T): void => {} : onNext,
-      onError == null ? (t: Error): void => {} : onError,
-      onComplete == null ? (): void => {} : onComplete,
-    );
-    this.subscribe(cs);
-    return cs;
-  }
-}
-
-// due to cross-dependency with Flux, this has to be in the same file until JS/TS sorts it out.
-
-/** Base class and fluent API entry point for 0..1 element publishers. */
-export class Mono<T> implements Publisher<T> {
-  /** Subscribe to this Mono and receive onNext+onComplete, onComplete or onError. */
-  subscribe(s: Subscriber<T>) {}
-
-  // -----------------------------------------------------
-  // static factory methods
-  // -----------------------------------------------------
-
-  // -----------------------------------------------------
-  // instance methods
-  // -----------------------------------------------------
-
-  // -----------------------------------------------------
-  // leave methods
-  // -----------------------------------------------------
-
-  consume(
-    onNext: (t: T) => void,
-    onError?: (t: Error) => void,
-    onComplete?: () => void,
-  ): Cancellation {
-    const cs = new CallbackSubscriber(
-      onNext == null ? (t: T): void => {} : onNext,
-      onError == null ? (t: Error): void => {} : onError,
-      onComplete == null ? (): void => {} : onComplete,
-    );
-    this.subscribe(cs);
-    return cs;
-  }
 }
 
 // ----------------------------------------------------------------------
@@ -685,7 +609,7 @@ export class DirectProcessor<T> extends Flux<T> implements Processor<T, T> {
     this._subscribers = [];
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     if (this._done) {
       s.onSubscribe(EmptySubscription.INSTANCE);
       const ex = this._error;
@@ -797,7 +721,7 @@ export class UnicastProcessor<T> extends Flux<T>
     );
   }
 
-  subscribe(s: Subscriber<T>) {
+  _subscribe(s: Subscriber<T>) {
     if (!this._once) {
       this._once = true;
       this._actual = s;
@@ -947,7 +871,7 @@ class FluxSource<T> extends Flux<T> {
     this._source = source;
   }
 
-  subscribe(s: Subscriber<T>) {
+  _subscribe(s: Subscriber<T>) {
     this._source.subscribe(s);
   }
 }
@@ -962,7 +886,7 @@ class FluxRange extends Flux<number> implements Fuseable {
     this._count = count;
   }
 
-  subscribe(s: Subscriber<number>): void {
+  _subscribe(s: Subscriber<number>): void {
     s.onSubscribe(
       new FluxRangeSubscription(this._start, this._start + this._count, s),
     );
@@ -981,7 +905,7 @@ class FluxMap<T, R> extends Flux<R> {
     this._mapper = mapper;
   }
 
-  subscribe(s: Subscriber<R>) {
+  _subscribe(s: Subscriber<R>) {
     this._source.subscribe(new FluxMapSubscriber(s, this._mapper));
   }
 }
@@ -989,7 +913,7 @@ class FluxMap<T, R> extends Flux<R> {
 class FluxEmpty<T> extends Flux<T> implements Fuseable, ScalarCallable<T> {
   static INSTANCE: Flux<any> = new FluxEmpty();
 
-  subscribe(s: Subscriber<any>) {
+  _subscribe(s: Subscriber<any>) {
     EmptySubscription.complete(s);
   }
 
@@ -1005,7 +929,7 @@ class FluxEmpty<T> extends Flux<T> implements Fuseable, ScalarCallable<T> {
 class FluxNever<T> extends Flux<T> {
   static INSTANCE: Flux<any> = new FluxNever();
 
-  subscribe(s: Subscriber<any>) {
+  _subscribe(s: Subscriber<any>) {
     s.onSubscribe(EmptySubscription.INSTANCE);
   }
 }
@@ -1020,7 +944,7 @@ class FluxJust<T> extends Flux<T> implements ScalarCallable<T> {
 
   isScalar() {}
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     s.onSubscribe(new ScalarSubscription(this._value, s));
   }
 
@@ -1037,7 +961,7 @@ class FluxFromCallable<T> extends Flux<T> implements Callable<T> {
     this._callable = callable;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     const dsd = new DeferrendScalarSubscription(s);
     s.onSubscribe(dsd);
 
@@ -1068,7 +992,7 @@ class FluxDefer<T> extends Flux<T> {
     this._supplier = supplier;
   }
 
-  subscribe(s: Subscriber<T>) {
+  _subscribe(s: Subscriber<T>) {
     let p;
 
     try {
@@ -1097,7 +1021,7 @@ class FluxFilter<T> extends Flux<T> {
     this._predicate = predicate;
   }
 
-  subscribe(s: Subscriber<T>) {
+  _subscribe(s: Subscriber<T>) {
     this._source.subscribe(new FluxFilterSubscriber(s, this._predicate));
   }
 }
@@ -1115,7 +1039,7 @@ class FluxLift<T, R> extends Flux<R> {
     this._lifter = lifter;
   }
 
-  subscribe(s: Subscriber<R>): void {
+  _subscribe(s: Subscriber<R>): void {
     this._source.subscribe(this._lifter(s));
   }
 }
@@ -1130,7 +1054,7 @@ class FluxArray<T> extends Flux<T> implements Fuseable {
 
   isFuseable() {}
 
-  subscribe(s: Subscriber<T>) {
+  _subscribe(s: Subscriber<T>) {
     s.onSubscribe(new FluxArraySubscription(this._array, s));
   }
 }
@@ -1145,7 +1069,7 @@ class FluxTake<T> extends Flux<T> {
     this._n = n;
   }
 
-  subscribe(s: Subscriber<T>) {
+  _subscribe(s: Subscriber<T>) {
     this._source.subscribe(new FluxTakeSubscriber(this._n, s));
   }
 }
@@ -1160,7 +1084,7 @@ class FluxSkip<T> extends Flux<T> {
     this._n = n;
   }
 
-  subscribe(s: Subscriber<T>) {
+  _subscribe(s: Subscriber<T>) {
     this._source.subscribe(new FluxSkipSubscriber(s, this._n));
   }
 }
@@ -1187,7 +1111,7 @@ class FluxFlatMap<T, R> extends Flux<R> {
     this._prefetch = prefetch;
   }
 
-  subscribe(s: Subscriber<R>): void {
+  _subscribe(s: Subscriber<R>): void {
     this._source.subscribe(
       new FlatMapSubscriber(
         s,
@@ -1208,7 +1132,7 @@ class FluxHide<T> extends Flux<T> {
     this._source = source;
   }
 
-  subscribe(s: Subscriber<T>) {
+  _subscribe(s: Subscriber<T>) {
     this._source.subscribe(new FluxHideSubscriber(s));
   }
 }
@@ -1223,7 +1147,7 @@ class FluxTimer extends Flux<number> {
     this._scheduler = scheduler;
   }
 
-  subscribe(s: Subscriber<number>): void {
+  _subscribe(s: Subscriber<number>): void {
     const p = new TimedSubscription(s);
     s.onSubscribe(p);
 
@@ -1245,7 +1169,7 @@ class FluxInterval extends Flux<number> {
     this._scheduler = scheduler;
   }
 
-  subscribe(s: Subscriber<number>): void {
+  _subscribe(s: Subscriber<number>): void {
     const p = new PeriodicTimedSubscription(s);
     s.onSubscribe(p);
 
@@ -1278,7 +1202,7 @@ class FluxConcatMap<T, R> extends Flux<R> {
     this._prefetch = prefetch;
   }
 
-  subscribe(s: Subscriber<R>): void {
+  _subscribe(s: Subscriber<R>): void {
     this._source.subscribe(
       new ConcatMapSubscriber(
         s,
@@ -1306,7 +1230,7 @@ class FluxZip<T, R> extends Flux<R> {
     this._prefetch = prefetch;
   }
 
-  subscribe(s: Subscriber<R>): void {
+  _subscribe(s: Subscriber<R>): void {
     const n = this._sources.length;
     const coord = new ZipCoordinator(s, this._zipper, this._prefetch, n);
     s.onSubscribe(coord);
@@ -1331,7 +1255,7 @@ class FluxCollect<T, U> extends Flux<U> {
     this._collector = collector;
   }
 
-  subscribe(s: Subscriber<U>): void {
+  _subscribe(s: Subscriber<U>): void {
     let c;
 
     try {
@@ -1369,7 +1293,7 @@ class FluxReduce<T, U> extends Flux<U> {
     this._reducer = reducer;
   }
 
-  subscribe(s: Subscriber<U>): void {
+  _subscribe(s: Subscriber<U>): void {
     let c;
 
     try {
@@ -1407,7 +1331,7 @@ class FluxWithLatestFrom<T, U, R> extends Flux<R> {
     this._combiner = combiner;
   }
 
-  subscribe(s: Subscriber<R>): void {
+  _subscribe(s: Subscriber<R>): void {
     const parent = new WithLatestFrom(s, this._combiner);
 
     parent.subscribe(this._other);
@@ -1432,7 +1356,7 @@ class FluxCombineLatest<R> extends Flux<R> {
     this._prefetch = prefetch;
   }
 
-  subscribe(s: Subscriber<R>): void {
+  _subscribe(s: Subscriber<R>): void {
     const a = this._sources;
     const n = a.length;
     const parent = new CombineLatest(s, this._combiner, this._prefetch, n);
@@ -1476,7 +1400,7 @@ class FluxDoOnLifecycle<T> extends Flux<T> {
     this._onCancel = onCancel;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     this._source.subscribe(
       new DoOnLifecycle(
         s,
@@ -1503,7 +1427,7 @@ class FluxOnErrorReturn<T> extends Flux<T> {
     this._value = value;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     this._source.subscribe(new OnErrorReturnSubscriber(s, this._value));
   }
 }
@@ -1518,7 +1442,7 @@ class FluxOnErrorResumeNext<T> extends Flux<T> {
     this._errorMapper = errorMapper;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     this._source.subscribe(new OnErrorResumeSubscriber(s, this._errorMapper));
   }
 }
@@ -1539,7 +1463,7 @@ class FluxSwitchMap<T, R> extends Flux<R> {
     this._prefetch = prefetch;
   }
 
-  subscribe(s: Subscriber<R>): void {
+  _subscribe(s: Subscriber<R>): void {
     this._source.subscribe(
       new SwitchMapSubscriber(s, this._mapper, this._prefetch),
     );
@@ -1562,7 +1486,7 @@ class FluxDebounceTime<T> extends Flux<T> {
     this._scheduler = scheduler;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     this._source.subscribe(
       new DebounceTimedSubscriber(
         s,
@@ -1589,7 +1513,7 @@ class FluxSampleTime<T> extends Flux<T> {
     this._scheduler = scheduler;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     this._source.subscribe(
       new SampleTimedSubscriber(s, this._timeout, this._scheduler),
     );
@@ -1612,7 +1536,7 @@ class FluxThrottleFirstTime<T> extends Flux<T> {
     this._scheduler = scheduler;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     this._source.subscribe(
       new ThrottleFirstTimedSubscriber(
         s,
@@ -1633,7 +1557,7 @@ class FluxTakeLast<T> extends Flux<T> {
     this._n = n;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     this._source.subscribe(new TakeLastSubscriber(s, this._n));
   }
 }
@@ -1646,7 +1570,7 @@ class FluxTakeLastOne<T> extends Flux<T> {
     this._source = source;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     this._source.subscribe(new TakeLastOneSubscriber(s));
   }
 }
@@ -1661,7 +1585,7 @@ class FluxSkipLast<T> extends Flux<T> {
     this._n = n;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     this._source.subscribe(new SkipLastSubscriber(s, this._n));
   }
 }
@@ -1676,7 +1600,7 @@ class FluxTakeUntil<T, U> extends Flux<T> {
     this._other = other;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     const main = new TakeUntilMainSubscriber(s);
 
     this._other.subscribe(main.getOther());
@@ -1695,7 +1619,7 @@ class FluxSkipUntil<T, U> extends Flux<T> {
     this._other = other;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     const main = new SkipUntilMainSubscriber(s);
 
     this._other.subscribe(main.getOther());
@@ -1712,7 +1636,7 @@ class FluxAmb<T> extends Flux<T> {
     this._sources = sources;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     const n = this._sources.length;
     const c = new AmbCoordinator(s, n);
 
@@ -1738,7 +1662,7 @@ class FluxGenerate<T, S> extends Flux<T> {
     this._stateDisposer = stateDisposer;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     let state;
 
     try {
@@ -1773,7 +1697,7 @@ class FluxUsing<T, R> extends Flux<T> {
     this._eager = eager;
   }
 
-  subscribe(s: Subscriber<T>): void {
+  _subscribe(s: Subscriber<T>): void {
     UsingSubscriber.subscribe(
       s,
       this._resourceFactory,

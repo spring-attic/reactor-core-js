@@ -16,9 +16,25 @@
  * @flow
  */
 
-import { Subscription, Subscriber } from './reactivestreams-spec';
+import {Subscription, Subscriber, Publisher} from './reactivestreams-spec';
 
-export interface Cancellation {
+declare class Flux<T> extends Publisher<T> {
+  subscribe(s: Subscriber<T>): void;
+  subscribe(
+    onNext?: (t: T) => void,
+    onError?: (t: Error) => void,
+    onComplete?: () => void) : Disposable;
+}
+
+declare class Mono<T> extends Publisher<T> {
+  subscribe(s: Subscriber<T>): void;
+  subscribe(
+    onNext?: (t: T) => void,
+    onError?: (t: Error) => void,
+    onComplete?: () => void) : Disposable;
+}
+
+export interface Disposable {
   dispose(): void;
 }
 
@@ -74,7 +90,7 @@ export interface ScalarCallable<T> extends Callable<T> {
   isScalar(): void;
 }
 
-export class CallbackCancellation implements Cancellation {
+export class CallbackDisposable implements Disposable {
   _callback: ?() => void;
 
   constructor(callback: () => void) {
@@ -90,30 +106,30 @@ export class CallbackCancellation implements Cancellation {
   }
 }
 
-export class Cancellations {
-  static REJECTED_INSTANCE = new CallbackCancellation(() => {});
-  static get REJECTED(): Cancellation {
-    return Cancellations.REJECTED_INSTANCE;
+export class Disposables {
+  static _REJECTED = new CallbackDisposable(() => {});
+  static get REJECTED(): Disposable {
+    return Disposables._REJECTED;
   }
 }
 
-export class CancelledCancellation implements Cancellation {
-  static INSTANCE_0 = new CancelledCancellation();
-  static get INSTANCE(): Cancellation {
-    return CancelledCancellation.INSTANCE_0;
+export class AlwaysDisposable implements Disposable {
+  static _INSTANCE = new AlwaysDisposable();
+  static get INSTANCE(): Disposable {
+    return AlwaysDisposable._INSTANCE;
   }
 
   dispose(): void {}
 }
 
-export class BooleanCancellation implements Cancellation {
-  _cancelled: boolean;
+export class SimpleDisposable implements Disposable {
+  _disposed: boolean;
 
   dispose(): void {
-    this._cancelled = true;
+    this._disposed = true;
   }
 
-  isCancelled(): boolean {
-    return this._cancelled;
+  isDisposed(): boolean {
+    return this._disposed;
   }
 }

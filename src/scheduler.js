@@ -16,11 +16,11 @@
  * @flow
  */
 
-import { Cancellation, Cancellations, CallbackCancellation } from './flow';
+import { Disposable, Disposables, CallbackDisposable } from './flow';
 
 /** Provides an abstract asychronous boundary to operators. */
 export interface Scheduler {
-  schedule(task: () => void): Cancellation;
+  schedule(task: () => void): Disposable;
 
   createWorker(): Worker;
 }
@@ -30,31 +30,31 @@ export interface Scheduler {
  * a FIFO order, guaranteed non-concurrently with respect to each other.
  */
 export interface Worker {
-  schedule(task: () => void): Cancellation;
+  schedule(task: () => void): Disposable;
 
   shutdown(): void;
 }
 
 export interface TimedScheduler extends Scheduler {
-  scheduleDelayed(task: () => void, delay: number): Cancellation;
+  scheduleDelayed(task: () => void, delay: number): Disposable;
 
   schedulePeriodic(
     task: () => void,
     initialDelay: number,
     period: number,
-  ): Cancellation;
+  ): Disposable;
 
   createWorker(): TimedWorker;
 }
 
 export interface TimedWorker extends Worker {
-  scheduleDelayed(task: () => void, delay: number): Cancellation;
+  scheduleDelayed(task: () => void, delay: number): Disposable;
 
   schedulePeriodic(
     task: () => void,
     initialDelay: number,
     period: number,
-  ): Cancellation;
+  ): Disposable;
 }
 
 export class DefaultScheduler implements TimedScheduler {
@@ -64,21 +64,21 @@ export class DefaultScheduler implements TimedScheduler {
     return DefaultScheduler._INSTANCE;
   }
 
-  schedule(task: () => void): Cancellation {
+  schedule(task: () => void): Disposable {
     const id = setTimeout(task, 0);
-    return new CallbackCancellation(() => clearTimeout(id));
+    return new CallbackDisposable(() => clearTimeout(id));
   }
 
-  scheduleDelayed(task: () => void, delay: number): Cancellation {
+  scheduleDelayed(task: () => void, delay: number): Disposable {
     const id = setTimeout(task, delay);
-    return new CallbackCancellation(() => clearTimeout(id));
+    return new CallbackDisposable(() => clearTimeout(id));
   }
 
   schedulePeriodic(
     task: () => void,
     initialDelay: number,
     period: number,
-  ): Cancellation {
+  ): Disposable {
     const pt = new PeriodicTask(task);
 
     pt.initialId = setTimeout(() => {
@@ -97,36 +97,38 @@ export class DefaultScheduler implements TimedScheduler {
 
 class DefaultWorker implements TimedWorker {
   _shutdown: boolean;
-  _tasks: Array<number>;
+  _timeouts: Array<TimeoutID>;
+  _intervals: Array<IntervalID>;
 
   constructor() {
     this._shutdown = false;
-    this._tasks = [];
+    this._timeouts = [];
+    this._intervals = [];
   }
 
-  schedule(task: () => void): Cancellation {
+  schedule(task: () => void): Disposable {
     if (this._shutdown) {
-      return Cancellations.REJECTED;
+      return Disposables.REJECTED;
     }
 
     const wt = new WorkerTask(this, task);
 
     const id = setTimeout(wt.run, 0);
-    this._tasks.push(id);
+    this._timeouts.push(id);
     wt.id = id;
 
     return wt;
   }
 
-  scheduleDelayed(task: () => void, delay: number): Cancellation {
+  scheduleDelayed(task: () => void, delay: number): Disposable {
     if (this._shutdown) {
-      return Cancellations.REJECTED;
+      return Disposables.REJECTED;
     }
 
     const wt = new WorkerTask(this, task);
 
     const id = setTimeout(wt.run, delay);
-    this._tasks.push(id);
+    this._timeouts.push(id);
     wt.id = id;
 
     return wt;
@@ -136,26 +138,26 @@ class DefaultWorker implements TimedWorker {
     task: () => void,
     initialDelay: number,
     period: number,
-  ): Cancellation {
+  ): Disposable {
     if (this._shutdown) {
-      return Cancellations.REJECTED;
+      return Disposables.REJECTED;
     }
 
     const wt = new WorkerPeriodicTask(this, task);
 
     const initialId = setTimeout(() => {
       if (wt.initialId != null) {
-        this.remove(wt.initialId);
+        this.removeTimeout(wt.initialId);
         wt.initialId = null;
       }
 
       task();
 
       const periodId = setInterval(wt.run, period);
-      this._tasks.push(periodId);
+      this._intervals.push(periodId);
       wt.periodId = periodId;
     }, initialDelay);
-    this._tasks.push(initialId);
+    this._timeouts.push(initialId);
     wt.initialId = initialId;
 
     return wt;
@@ -163,22 +165,33 @@ class DefaultWorker implements TimedWorker {
 
   shutdown(): void {
     this._shutdown = true;
-    for (const n of this._tasks) {
+    for (const n of this._timeouts) {
       clearTimeout(n);
     }
-    this._tasks.length = 0;
+    this._timeouts.length = 0;
+    for (const n of this._intervals) {
+      clearInterval(n);
+    }
+    this._intervals.length = 0;
   }
 
-  remove(id: number): void {
-    const idx = this._tasks.indexOf(id);
+  removeTimeout(id: TimeoutID): void {
+    const idx = this._timeouts.indexOf(id);
     if (idx >= 0) {
-      this._tasks.splice(idx, 1);
+      this._timeouts.splice(idx, 1);
+    }
+  }
+
+  removeInterval(id: IntervalID): void {
+    const idx = this._intervals.indexOf(id);
+    if (idx >= 0) {
+      this._intervals.splice(idx, 1);
     }
   }
 }
 
-class WorkerTask implements Cancellation {
-  id: number;
+class WorkerTask implements Disposable {
+  id: TimeoutID;
 
   _parent: DefaultWorker;
   _task: () => void;
@@ -192,19 +205,19 @@ class WorkerTask implements Cancellation {
     try {
       this._task();
     } finally {
-      this._parent.remove(this.id);
+      this._parent.removeTimeout(this.id);
     }
   }
 
   dispose(): void {
     clearTimeout(this.id);
-    this._parent.remove(this.id);
+    this._parent.removeTimeout(this.id);
   }
 }
 
-class WorkerPeriodicTask implements Cancellation {
-  initialId: ?number;
-  periodId: ?number;
+class WorkerPeriodicTask implements Disposable {
+  initialId: ?TimeoutID;
+  periodId: ?IntervalID;
 
   _parent: DefaultWorker;
   _task: () => void;
@@ -222,7 +235,7 @@ class WorkerPeriodicTask implements Cancellation {
       if (this.periodId != null) {
         const periodId = this.periodId;
         clearInterval(periodId);
-        this._parent.remove(periodId);
+        this._parent.removeInterval(periodId);
       }
     }
   }
@@ -231,22 +244,21 @@ class WorkerPeriodicTask implements Cancellation {
     if (this.initialId != null) {
       const initialId = this.initialId;
       clearTimeout(initialId);
-      this._parent.remove(initialId);
+      this._parent.removeTimeout(initialId);
       this.initialId = null;
     }
     if (this.periodId != null) {
       const periodId = this.periodId;
       clearInterval(periodId);
-      this._parent.remove(periodId);
+      this._parent.removeInterval(periodId);
       this.periodId = null;
     }
   }
 }
 
-class PeriodicTask implements Cancellation {
-  initialId: ?number;
-
-  periodId: ?number;
+class PeriodicTask implements Disposable {
+  initialId: ?TimeoutID;
+  periodId: ?IntervalID;
 
   _task: () => void;
 

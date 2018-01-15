@@ -18,12 +18,12 @@
 
 import { Subscription, Subscriber } from './reactivestreams-spec';
 import { SH } from './subscription';
-import { Cancellation, CancelledCancellation } from './flow';
+import { Disposable, AlwaysDisposable } from './flow';
 
 export class TimedSubscription implements Subscription {
   _actual: Subscriber<number>;
 
-  _future: Cancellation;
+  _future: Disposable;
   _requested: boolean;
 
   constructor(actual: Subscriber<number>) {
@@ -39,8 +39,8 @@ export class TimedSubscription implements Subscription {
 
   cancel(): void {
     const a = this._future;
-    if (a != CancelledCancellation.INSTANCE) {
-      this._future = CancelledCancellation.INSTANCE;
+    if (a != AlwaysDisposable.INSTANCE) {
+      this._future = AlwaysDisposable.INSTANCE;
       if (a != null) {
         a.dispose();
       }
@@ -50,7 +50,7 @@ export class TimedSubscription implements Subscription {
   run = (): void => {
     if (this._requested) {
       this._actual.onNext(0);
-      if (this._future != CancelledCancellation.INSTANCE) {
+      if (this._future != AlwaysDisposable.INSTANCE) {
         this._actual.onComplete();
       }
     } else {
@@ -60,9 +60,9 @@ export class TimedSubscription implements Subscription {
     }
   };
 
-  setFuture(c: Cancellation): void {
+  setFuture(c: Disposable): void {
     const a = this._future;
-    if (a != CancelledCancellation.INSTANCE) {
+    if (a != AlwaysDisposable.INSTANCE) {
       this._future = c;
     } else {
       c.dispose();
@@ -73,7 +73,7 @@ export class TimedSubscription implements Subscription {
 export class PeriodicTimedSubscription implements Subscription {
   _actual: Subscriber<number>;
 
-  _future: Cancellation;
+  _future: Disposable;
   _requested: number;
   _count: number;
 
@@ -91,8 +91,8 @@ export class PeriodicTimedSubscription implements Subscription {
 
   cancel(): void {
     const a = this._future;
-    if (a != CancelledCancellation.INSTANCE) {
-      this._future = CancelledCancellation.INSTANCE;
+    if (a != AlwaysDisposable.INSTANCE) {
+      this._future = AlwaysDisposable.INSTANCE;
       if (a != null) {
         a.dispose();
       }
@@ -102,7 +102,7 @@ export class PeriodicTimedSubscription implements Subscription {
   run = (): void => {
     if (this._requested-- > 0) {
       this._actual.onNext(this._count++);
-      if (this._future != CancelledCancellation.INSTANCE) {
+      if (this._future != AlwaysDisposable.INSTANCE) {
         this._actual.onComplete();
       }
     } else {
@@ -113,9 +113,9 @@ export class PeriodicTimedSubscription implements Subscription {
     }
   };
 
-  setFuture(c: Cancellation): void {
+  setFuture(c: Disposable): void {
     const a = this._future;
-    if (a != CancelledCancellation.INSTANCE) {
+    if (a != AlwaysDisposable.INSTANCE) {
       this._future = c;
     } else {
       c.dispose();

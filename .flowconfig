@@ -9,7 +9,6 @@
 [libs]
 
 [options]
-unsafe.enable_getters_and_setters=true
 
 [version]
-^0.61.0
+^0.63.1
