@@ -1,24 +1,31 @@
 language: node_js
+
+# https://github.com/nodejs/LTS
 node_js:
+- '9'
 - '8'
 - '6'
 - '4'
+
 git:
   depth: 5
+
 cache: yarn
+
 script:
-- if [[ "$TRAVIS_JOB_NUMBER" == *.1 ]]; then npm run lint && npm run check; else npm run testonly; fi
+  - if [[ "$TRAVIS_JOB_NUMBER" == *.1 ]]; then npm run test:ci; else npm run testonly; fi
+
 jobs:
   include:
-  - stage: Deploy
-    script: echo "Deploying..."
-    node_js: '8'
-    deploy:
-    - provider: npm
-      skip_cleanup: true
-      email: ryland@netifi.com
-      api_key:
-        secure: fKpK+9XPwcl/pHLR1lVCazQEmonRQSsFwbU27ROMxWlQ6qiTd5sbJFJrRwu0g4KOGZ7/v/NxbKM/L0R8E68vz9vK/WV5orNpv7LnL48hQ5JwsIgOmGspk4OPdMcoK8XPFnW20b9+P2+/LyXPiehQzVmWz8tGykydl7yRsNlvhnaEkV787CMeuHeCx2uisXH9boOnNjeYPwO8Rz6jjRgcELdQK5Qi5i8x3fsr+M1bxmg4Ojj/cWCsn3l4hBOooH644UTbFm+MwfA6e2FMUeRt3m8m44XJLMPXhELHkLuIlVIR+wHL3KZPOIZ9rpHnHdFumXMBteZeC9T+alhe169HX9svHOarTQ87FqWOeUbW0XLha3HOunHmjaVZ7lEEBRv2A9IUqD7SiPS17mF9LHiREebeBtI5502jLpAIakt3Mp+GhXHRM/i2Oze4J98EgTa00O+L1Q39acdfBuvyqQdPPYTgyBeWsmnJcDENRTakFf0nH57eJ93XhmbtsLJRhZvSBpDAoU3sLzzrcO5FsVnzLHESoGHI5DSEAoI+hJa9VtmAZOqsedh0RM582YE9C9qCFzlBYd5ajPf6txFXn0fnL093SWU9gzdAcEERxfn6Q4sohssY6xlzJhO8ogsSlYxLZfnR8GgD2XOgagAk/tPQakoLDnNsotlc8d86MnYwmKY=
-      on:
-        tags: true
-        branch: master
+    - stage: Deploy
+      script: echo "Deploying..."
+      node_js: '8'
+      deploy:
+      - provider: npm
+        skip_cleanup: true
+        email: ryland@netifi.com
+        api_key:
+          secure: fKpK+9XPwcl/pHLR1lVCazQEmonRQSsFwbU27ROMxWlQ6qiTd5sbJFJrRwu0g4KOGZ7/v/NxbKM/L0R8E68vz9vK/WV5orNpv7LnL48hQ5JwsIgOmGspk4OPdMcoK8XPFnW20b9+P2+/LyXPiehQzVmWz8tGykydl7yRsNlvhnaEkV787CMeuHeCx2uisXH9boOnNjeYPwO8Rz6jjRgcELdQK5Qi5i8x3fsr+M1bxmg4Ojj/cWCsn3l4hBOooH644UTbFm+MwfA6e2FMUeRt3m8m44XJLMPXhELHkLuIlVIR+wHL3KZPOIZ9rpHnHdFumXMBteZeC9T+alhe169HX9svHOarTQ87FqWOeUbW0XLha3HOunHmjaVZ7lEEBRv2A9IUqD7SiPS17mF9LHiREebeBtI5502jLpAIakt3Mp+GhXHRM/i2Oze4J98EgTa00O+L1Q39acdfBuvyqQdPPYTgyBeWsmnJcDENRTakFf0nH57eJ93XhmbtsLJRhZvSBpDAoU3sLzzrcO5FsVnzLHESoGHI5DSEAoI+hJa9VtmAZOqsedh0RM582YE9C9qCFzlBYd5ajPf6txFXn0fnL093SWU9gzdAcEERxfn6Q4sohssY6xlzJhO8ogsSlYxLZfnR8GgD2XOgagAk/tPQakoLDnNsotlc8d86MnYwmKY=
+        on:
+          tags: true
+          branch: master

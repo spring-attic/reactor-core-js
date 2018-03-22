@@ -83,7 +83,7 @@ export class DebounceTimedSubscriber<T> implements Subscriber<T>, Subscription {
   }
 
   onComplete(): void {
-    if (this.done) {
+    if (this._done) {
       return;
     }
     this._done = true;

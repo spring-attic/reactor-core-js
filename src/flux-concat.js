@@ -164,7 +164,7 @@ export class ConcatMapSubscriber<T, R> implements Subscriber<T>, Subscription {
 
         if (v != null) {
           const c = this._consumed + 1;
-          if (c == this.limit) {
+          if (c == this._limit) {
             this._consumed = 0;
             this._s.request(c);
           } else {
@@ -187,21 +187,21 @@ export class ConcatMapSubscriber<T, R> implements Subscriber<T>, Subscription {
 
           /*
                     const call = (p as Object) as Callable<R>;
-                    
+
                     if (call.call) {
                         var u;
-                        
+
                         try {
                             u = call.call();
                         } catch (e) {
                             this.addError(e);
                             continue;
                         }
-                        
+
                         if (u == null) {
                             continue;
                         }
-                        
+
                         if (this.inner.hasRequested()) {
                             this.actual.onNext(u);
                             this.inner.produceOne();

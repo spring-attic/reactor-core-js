@@ -408,7 +408,7 @@ export class TakeUntilMainSubscriber<T, U>
 
   otherSignal(): void {
     this._done = true;
-    if (this.s == null) {
+    if (this._s == null) {
       this._s = SH.CANCELLED;
       EmptySubscription.complete(this._actual);
     } else {

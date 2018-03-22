@@ -77,7 +77,7 @@ export class CallbackSubscriber<T> implements Subscriber<T>, Disposable {
   }
 
   onComplete(): void {
-    if (this.done) {
+    if (this._done) {
       return;
     }
     this._done = true;

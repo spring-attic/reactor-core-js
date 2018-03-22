@@ -193,7 +193,7 @@ export class SwitchMapSubscriber<T, R> implements Subscriber<T>, Subscription {
             return;
           }
 
-          if (c.index != this._index) {
+          if (c._index != this._index) {
             this._requested -= e;
             continue outer;
           }

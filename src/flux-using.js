@@ -140,7 +140,7 @@ export class UsingSubscriber<T, R> implements Subscriber<T>, Subscription {
 
     this._actual.onComplete();
 
-    if (!this.eager) {
+    if (!this._eager) {
       if (!this._once) {
         this._once = true;
         try {

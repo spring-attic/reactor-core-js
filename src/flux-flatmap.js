@@ -442,7 +442,7 @@ export class FlatMapSubscriber<T, R> implements Subscriber<T>, Subscription {
                   break;
                 }
 
-                if (inner.done && v == null) {
+                if (inner._done && v == null) {
                   this.removeInner(i);
                   //i--;
                   requestMain++;
