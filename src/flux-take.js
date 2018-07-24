@@ -58,7 +58,7 @@ export class FluxTakeSubscriber<T> implements Subscriber<T>, Subscription {
       this._actual.onComplete();
       return;
     }
-    r--;
+    this._remaining = --r;
 
     this._actual.onNext(t);
 
