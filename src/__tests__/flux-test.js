@@ -54,4 +54,17 @@ describe('Flux Tests', () => {
       });
     });
   });
+  describe('FluxTake', () => {
+    it('normal', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 10)
+          .take(5)
+          .subscribe(ts);
+      ts.await().then(() => {
+        ts.assertValues([1, 2, 3, 4, 5]);
+        ts.assertComplete();
+        ts.assertNoError();
+      });
+    });
+  });
 });
