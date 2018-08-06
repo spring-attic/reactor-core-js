@@ -151,7 +151,7 @@ export class ConcatMapSubscriber<T, R> implements Subscriber<T>, Subscription {
       if (!this._active) {
         const v = this._queue.poll();
 
-        if (this.done && v == null) {
+        if (this._done && v == null) {
           const ex = this._error;
           if (ex != null) {
             this._error = SH.TERMINAL_ERROR;
