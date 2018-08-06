@@ -40,4 +40,18 @@ describe('Flux Tests', () => {
       c.dispose();
     });
   });
+  describe('FluxConcatMap', () => {
+    it('normal', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 2)
+          .concatMap(v => Flux.range(v, 2))
+          .subscribe(ts);
+
+      return ts.await().then(() => {
+        ts.assertValues([1, 2, 2, 3]);
+        ts.assertNoError();
+        ts.assertComplete();
+      });
+    });
+  });
 });
