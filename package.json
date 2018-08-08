@@ -1,6 +1,6 @@
 {
   "name": "reactor-core-js",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Reactive-Streams based implementation of Reactor-Core",
   "contributors": [
     "David Karnok <akarnokd@gmail.com>",
