@@ -46,13 +46,13 @@ export class ZipCoordinator<T, R> implements Subscription {
     this._n = n;
     this._requested = 0;
     this._wip = 0;
-    const a = new ZipInnerSubscriber[n]();
+    const a = new Array(n);
     for (let i = 0; i < n; i++) {
       a[i] = new ZipInnerSubscriber(this, prefetch, i);
     }
     this._subscribers = a;
 
-    this._row = new Object[n].fill(null);
+    this._row = new Array(n);
   }
 
   request(n: number): void {
