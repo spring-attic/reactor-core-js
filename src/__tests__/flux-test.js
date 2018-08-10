@@ -40,6 +40,44 @@ describe('Flux Tests', () => {
       c.dispose();
     });
   });
+  describe('FluxInterval', () => {
+    it('normal', () => {
+      const ts = new TestSubscriber();
+      Flux.interval(100, 100)
+          .take(5)
+          .map(() => Date.now())
+          .subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertValueCount(5);
+        ts.assertNoError();
+        ts.assertComplete();
+        const values = ts._values;
+        for (let i = 0; i < values.length - 1; i++)
+        {
+            const diff = values[i + 1] - values[i];
+            expect(diff).to.be.within(50, 150, "period failure: " + diff);
+        }
+      });
+    });
+  });
+  describe('FluxTimer', () => {
+    it('normal', () => {
+      const ts = new TestSubscriber();
+      Flux.timer(100)
+          .subscribe(ts);
+      let timeout = new Promise((resolve, reject) => {
+        let id = setTimeout(() => {
+          clearTimeout(id);
+          reject('Timed out');
+        }, 150);
+      });
+      return Promise.race([timeout, ts.await()]).then(() => {
+        ts.assertValues([0]);
+        ts.assertNoError();
+        ts.assertComplete();
+      });
+    });
+  });
   describe('FluxConcatMap', () => {
     it('normal', () => {
       const ts = new TestSubscriber();

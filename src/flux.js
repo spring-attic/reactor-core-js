@@ -1151,7 +1151,7 @@ class FluxTimer extends Flux<number> {
     const p = new TimedSubscription(s);
     s.onSubscribe(p);
 
-    const c = this._scheduler.scheduleDelayed(p.run, this._delay);
+    const c = this._scheduler.scheduleDelayed(() => p.run(), this._delay);
 
     p.setFuture(c);
   }
@@ -1174,7 +1174,7 @@ class FluxInterval extends Flux<number> {
     s.onSubscribe(p);
 
     const c = this._scheduler.schedulePeriodic(
-      p.run,
+      () => p.run(),
       this._initialDelay,
       this._period,
     );
