@@ -23,7 +23,7 @@ Flux.range(1, 10)
 .take(5)
 .map(v => v * 2)
 .flatMap(v => Flux.range(v, 2))
-.consume(v => console.log(v));
+.subscribe(v => console.log(v));
 ```
 
 ## Reactive Entry points
@@ -100,12 +100,10 @@ Flux.range(1, 10)
 
 ### Flux
 
-  - `consume`
   - `subscribe`
 
 ### Mono
 
-  - `consume`
   - `subscribe`
 
 
