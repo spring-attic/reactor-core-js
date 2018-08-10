@@ -49,8 +49,8 @@ export class TimedSubscription implements Subscription {
 
   run = (): void => {
     if (this._requested) {
-      this._actual.onNext(0);
       if (this._future != AlwaysDisposable.INSTANCE) {
+        this._actual.onNext(0);
         this._actual.onComplete();
       }
     } else {
@@ -101,9 +101,8 @@ export class PeriodicTimedSubscription implements Subscription {
 
   run = (): void => {
     if (this._requested-- > 0) {
-      this._actual.onNext(this._count++);
       if (this._future != AlwaysDisposable.INSTANCE) {
-        this._actual.onComplete();
+        this._actual.onNext(this._count++);
       }
     } else {
       this.cancel();

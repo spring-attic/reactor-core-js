@@ -84,7 +84,7 @@ export class DefaultScheduler implements TimedScheduler {
     pt.initialId = setTimeout(() => {
       task();
 
-      pt.periodId = setInterval(pt.run, period);
+      pt.periodId = setInterval(() => pt.run(), period);
     }, initialDelay);
 
     return pt;
