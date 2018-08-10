@@ -78,6 +78,17 @@ describe('Flux Tests', () => {
       });
     });
   });
+  describe('FluxRange', () => {
+    it('normal', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 10).subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertNoError();
+        ts.assertValues([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ts.assertComplete();
+      });
+    });
+  });
   describe('FluxConcatMap', () => {
     it('normal', () => {
       const ts = new TestSubscriber();
@@ -100,6 +111,23 @@ describe('Flux Tests', () => {
           .subscribe(ts);
       ts.await().then(() => {
         ts.assertValues([1, 2, 3, 4, 5]);
+        ts.assertComplete();
+        ts.assertNoError();
+      });
+    });
+  });
+  describe('FluxZip', () => {
+    it('normal', () => {
+      const ts = new TestSubscriber();
+      const flux1 = Flux.just(1);
+      const flux2 = Flux.just(2);
+      const flux3 = Flux.just(3);
+      const flux4 = Flux.just(4);
+      const flux5 = Flux.just(5);
+      Flux.zip([flux1, flux2, flux3, flux4, flux5], v => v)
+          .subscribe(ts);
+      ts.await().then(() => {
+        ts.assertValues([[1, 2, 3, 4, 5]]);
         ts.assertComplete();
         ts.assertNoError();
       });
