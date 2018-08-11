@@ -283,6 +283,14 @@ export class TestSubscriber<T> implements Subscriber<T>, Subscription {
           '\n',
       );
     }
+    if (this._values[0] != v) {
+      this.error(
+          'Value differ. Expected: ' +
+          String(v) +
+          '; Actual: ' +
+          String(this._values[0]),
+      )
+    }
   }
 
   assertValueCount(n: number): void {
