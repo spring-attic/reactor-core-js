@@ -18,6 +18,8 @@
 
 import {Publisher, Subscriber} from "./reactivestreams-spec";
 import {CallbackSubscriber} from "./subscriber";
+import {Fuseable} from "./flow";
+import {DeferrendScalarSubscription} from "./subscription";
 
 /** Base class and fluent API entry point for 0..1 element publishers. */
 export class Mono<T> implements Publisher<T> {
@@ -40,4 +42,36 @@ export class Mono<T> implements Publisher<T> {
   _subscribe(s: Subscriber<T>): void {
     throw new Error('subscribe method not implemented!');
   }
+
+  static fromPromise(source: Promise<T>): Mono<T> {
+    return new MonoPromise(source);
+  }
+}
+
+class MonoPromise<T> extends Mono<T> implements Fuseable {
+  _promise: Promise<T>;
+
+  constructor(promise: Promise<T>) {
+    super();
+    this._promise = promise;
+  }
+
+  _subscribe(actual: Subscriber<T>): void {
+    let s = new DeferrendScalarSubscription(actual);
+    actual.onSubscribe(s);
+    if (s.isCancelled()) {
+      return;
+    }
+    this._promise.then(v => {
+      if (v != null) {
+        s.complete(v);
+      } else {
+        actual.onComplete();
+      }
+    }, e => {
+      actual.onError(e);
+    });
+  }
+
+  isFuseable(): void {}
 }

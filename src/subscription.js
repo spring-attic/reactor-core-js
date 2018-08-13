@@ -222,6 +222,10 @@ export class DeferrendScalarSubscription<T> implements QueueSubscription<T> {
     this._fused = FusedState.COMPLETE;
   }
 
+  isCancelled(): boolean {
+    return this._state === DeferredState.CANCELLED;
+  }
+
   requestFusion(mode: number): number {
     if ((mode & FC.ASYNC) !== 0 && (mode & FC.BOUNDARY) === 0) {
       this._fused = FusedState.NO_VALUE;
