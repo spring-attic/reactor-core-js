@@ -124,10 +124,20 @@ describe('Flux Tests', () => {
       const flux3 = Flux.just(3);
       const flux4 = Flux.just(4);
       const flux5 = Flux.just(5);
-      Flux.zip([flux1, flux2, flux3, flux4, flux5], v => v)
+      Flux.zip([flux1, flux2, flux3, flux4, flux5], v => JSON.stringify(v))
           .subscribe(ts);
-      ts.await().then(() => {
-        ts.assertValues([[1, 2, 3, 4, 5]]);
+      return ts.await().then(() => {
+        ts.assertValue('[1,2,3,4,5]');
+        ts.assertComplete();
+        ts.assertNoError();
+      });
+    });
+    it('prefetch', () => {
+      const ts = new TestSubscriber(1);
+      Flux.zip([Flux.just(1), Flux.just(2)], ([a1, a2]) => a1 + a2, 1)
+          .subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertValue(3);
         ts.assertComplete();
         ts.assertNoError();
       });

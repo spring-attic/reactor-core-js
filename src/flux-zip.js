@@ -32,7 +32,7 @@ export class ZipCoordinator<T, R> implements Subscription {
   _wip: number;
   _cancelled: boolean;
   _error: Error;
-  _row: T[];
+  _row: Array<?T>;
 
   constructor(
     actual: Subscriber<R>,
@@ -52,7 +52,7 @@ export class ZipCoordinator<T, R> implements Subscription {
     }
     this._subscribers = a;
 
-    this._row = new Array(n);
+    this._row = new Array(n).fill(null);
   }
 
   request(n: number): void {
@@ -177,7 +177,7 @@ export class ZipCoordinator<T, R> implements Subscription {
         let result: R;
 
         try {
-          result = this._zipper(row.slice());
+          result = this._zipper(((row.slice(): any): T[]));
         } catch (t) {
           this.addError(t);
           continue outer;
@@ -191,6 +191,7 @@ export class ZipCoordinator<T, R> implements Subscription {
         a.onNext(result);
 
         e++;
+        row.fill(null);
       }
 
       if (e == r) {
@@ -283,6 +284,7 @@ class ZipInnerSubscriber<T, R> implements Subscriber<T> {
   onSubscribe(s: Subscription): void {
     if (SH.validSubscription(this._s, s)) {
       this._s = s;
+      s.request(this._prefetch);
     }
   }
 
