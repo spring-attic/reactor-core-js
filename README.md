@@ -63,8 +63,8 @@ Flux.range(1, 10)
   - `compose`
   - `concatWith`
   - `debounce`
+  - `doAfterTerminated`
   - `doOnAfterNext`
-  - `doOnAfterTerminated`
   - `doOnCancel`
   - `doOnComplete`
   - `doOnError`
