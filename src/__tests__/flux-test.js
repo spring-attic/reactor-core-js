@@ -109,8 +109,32 @@ describe('Flux Tests', () => {
       Flux.range(1, 10)
           .take(5)
           .subscribe(ts);
-      ts.await().then(() => {
+      return ts.await().then(() => {
         ts.assertValues([1, 2, 3, 4, 5]);
+        ts.assertComplete();
+        ts.assertNoError();
+      });
+    });
+  });
+  describe('FluxSkip', () => {
+    it('normal', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 10)
+          .skip(5)
+          .subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertValues([6, 7, 8, 9, 10]);
+        ts.assertComplete();
+        ts.assertNoError();
+      });
+    });
+    it('skip all', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 10)
+          .skip(Infinity)
+          .subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertNoValues();
         ts.assertComplete();
         ts.assertNoError();
       });
