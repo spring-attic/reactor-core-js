@@ -323,7 +323,7 @@ export class SkipLastSubscriber<T> implements Subscriber<T>, Subscription {
     if (q.isFull()) {
       const v = q.poll();
       if (v != null) {
-        this.onNext(v);
+        this._actual.onNext(v);
       }
     }
     q.offer(t);

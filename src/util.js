@@ -181,14 +181,8 @@ export class RingBuffer<T> {
     const a = this.array;
 
     let pi = this.producerIndex;
-    a[pi++] = t;
-
-    if (pi == a.length) {
-      this.producerIndex = 0;
-    } else {
-      this.producerIndex = pi;
-    }
     let ci = this.consumerIndex;
+
     if (pi == ci) {
       ci++;
       if (ci == a.length) {
@@ -196,6 +190,13 @@ export class RingBuffer<T> {
       } else {
         this.consumerIndex = ci;
       }
+    }
+
+    a[pi++] = t;
+    if (pi == a.length) {
+      this.producerIndex = 0;
+    } else {
+      this.producerIndex = pi;
     }
   }
 

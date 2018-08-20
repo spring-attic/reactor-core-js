@@ -575,6 +575,9 @@ export class Flux<T> implements Publisher<T> {
   }
 
   skipLast(n: number): Flux<T> {
+    if (n === 0) {
+      return this;
+    }
     return new FluxSkipLast(this, n);
   }
 
