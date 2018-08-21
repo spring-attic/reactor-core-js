@@ -78,17 +78,6 @@ describe('Flux Tests', () => {
       });
     });
   });
-  describe('FluxRange', () => {
-    it('normal', () => {
-      const ts = new TestSubscriber();
-      Flux.range(1, 10).subscribe(ts);
-      return ts.await().then(() => {
-        ts.assertNoError();
-        ts.assertValues([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-        ts.assertComplete();
-      });
-    });
-  });
   describe('FluxConcatMap', () => {
     it('normal', () => {
       const ts = new TestSubscriber();
