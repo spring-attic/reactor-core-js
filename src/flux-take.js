@@ -129,9 +129,7 @@ export class FluxSkipSubscriber<T> implements Subscriber<T>, Subscription {
     if (r != 0) {
       r--;
       this._remaining = r;
-      if (r != 0) {
-        return;
-      }
+      return;
     }
     this._actual.onNext(t);
   }
