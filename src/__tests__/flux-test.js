@@ -116,6 +116,63 @@ describe('Flux Tests', () => {
       });
     });
   });
+  describe('FluxTakeLast', () => {
+    it('take none', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 10)
+          .takeLast(0)
+          .subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertNoValues();
+        ts.assertNoError();
+        ts.assertComplete();
+      });
+    });
+    it('take one', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 10).takeLast(1).subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertValue(10);
+        ts.assertNoError();
+        ts.assertComplete();
+      });
+    });
+    it('take some', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 10)
+          .takeLast(5)
+          .subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertValues([6, 7, 8, 9, 10]);
+        ts.assertNoError();
+        ts.assertComplete();
+      });
+    });
+  });
+  describe('FluxSkipLast', () => {
+    it('skip none', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 10)
+          .skipLast(0)
+          .subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertValues([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ts.assertNoError();
+        ts.assertComplete();
+      });
+    });
+    it('skip some', () => {
+      const ts = new TestSubscriber();
+      Flux.range(1, 10)
+          .skipLast(3)
+          .subscribe(ts);
+      return ts.await().then(() => {
+        ts.assertValues([1, 2, 3, 4, 5, 6, 7]);
+        ts.assertNoError();
+        ts.assertComplete();
+      });
+    });
+  });
   describe('FluxZip', () => {
     it('normal', () => {
       const ts = new TestSubscriber();
