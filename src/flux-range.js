@@ -89,6 +89,7 @@ export class FluxRangeSubscription implements QueueSubscription<number> {
 
         n = this._requested;
         if (r == n) {
+          this._index = i;
           this._requested = 0;
           return;
         } else {
@@ -199,6 +200,7 @@ export class FluxArraySubscription<T> implements QueueSubscription<T> {
 
         n = this._requested;
         if (r == n) {
+          this._index = i;
           this._requested = 0;
           return;
         } else {
