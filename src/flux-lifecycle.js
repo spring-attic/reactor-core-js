@@ -133,7 +133,7 @@ export class DoOnLifecycle<T> implements Subscriber<T>, Subscription {
     }
 
     if (c) {
-      this.onComplete();
+      this._actual.onComplete();
     }
 
     try {
